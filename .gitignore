@@ -1,0 +1,27 @@
+# Gradle / Kotlin
+.gradle/
+build/
+.kotlin/
+**/build/
+local.properties
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.idea_modules/
+
+# Node
+node_modules/
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Runtime / exported
+*.apk
+*.log
+out/

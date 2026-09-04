@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>闪念胶囊</title>
+    <style>
+        * { margin: 0; padding: 0; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+        html, body { height: 100%; }
+        body { overflow: hidden; background: #F9F7F4; }
+        input:focus { outline: none; }
+    </style>
+</head>
+<body>
+<div id="root"></div>
+<!-- 业务 JS（shared 经 Kuikly 插件打包，dev 放 page/ 由 dev-server 提供） -->
+<script type="text/javascript" src="page/nativevue2.js"></script>
+<!-- H5 壳 JS（webpack 注入/同目录） -->
+<script type="text/javascript" src="h5App.js"></script>
+</body>
+</html>
