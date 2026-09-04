@@ -29,6 +29,7 @@ import com.tencent.kuikly.compose.ui.Modifier
 import com.tencent.kuikly.compose.ui.graphics.Color
 import com.tencent.kuikly.compose.ui.text.font.FontFamily
 import com.tencent.kuikly.compose.ui.text.font.FontWeight
+import com.tencent.kuikly.compose.ui.text.input.TextFieldValue
 import com.tencent.kuikly.compose.ui.unit.dp
 import com.tencent.kuikly.compose.ui.unit.sp
 import com.snapcapsule.data.CapsuleStore
@@ -47,19 +48,19 @@ fun EditorSheet() {
     val editing = editingId?.let { CapsuleStore.find(it) }
     val isEdit = editing != null
 
-    var text by remember { mutableStateOf(editing?.text ?: "") }
+    var textValue by remember { mutableStateOf(TextFieldValue(editing?.text ?: "")) }
     var cat by remember { mutableStateOf(editing?.cat ?: Cat.LIFE) }
     var tags by remember { mutableStateOf<List<String>>(editing?.tags ?: emptyList()) }
-    var tagInput by remember { mutableStateOf("") }
+    var tagInputValue by remember { mutableStateOf(TextFieldValue("")) }
 
     fun addTag() {
-        val v = tagInput.trim().removePrefix("#")
+        val v = tagInputValue.text.trim().removePrefix("#")
         if (v.isNotEmpty() && !tags.contains(v)) tags = tags + v
-        tagInput = ""
+        tagInputValue = TextFieldValue("")
     }
 
     fun save() {
-        val content = text.trim()
+        val content = textValue.text.trim()
         if (content.isEmpty()) {
             UiState.toast("先记点什么吧")
             return
@@ -106,8 +107,8 @@ fun EditorSheet() {
 
             // 正文
             TextField(
-                value = text,
-                onValueChange = { text = it },
+                value = textValue,
+                onValueChange = { textValue = it },
                 placeholder = { Text("记个闪念…", color = Palette.muted) },
                 maxLines = 6,
                 colors = TextFieldDefaults.colors(
@@ -128,8 +129,8 @@ fun EditorSheet() {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("#", color = Palette.accent, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, fontFamily = FontFamily.Monospace)
                 TextField(
-                    value = tagInput,
-                    onValueChange = { tagInput = it },
+                    value = tagInputValue,
+                    onValueChange = { tagInputValue = it },
                     placeholder = { Text("标签，输完点 ＋", color = Palette.muted) },
                     singleLine = true,
                     colors = TextFieldDefaults.colors(
