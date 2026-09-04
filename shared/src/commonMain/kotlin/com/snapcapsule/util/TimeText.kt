@@ -40,9 +40,9 @@ object TimeText {
     fun isToday(epochMs: Long, now: Long): Boolean =
         epochMs >= startOfDay(now)
 
-    /** 该时刻是否在“近一周”内（今天起的 7 个自然日）。 */
+    /** 该时刻是否在“近一周”内（今天起的 7 个自然日，即过去 6 天 + 今天）。 */
     fun isThisWeek(epochMs: Long, now: Long): Boolean =
-        epochMs >= startOfDay(now - 6L)
+        epochMs >= startOfDay(now - 6L * 86_400_000L) // 6 天，勿写成 6L（毫秒）
 
     private fun startOfDay(epochMs: Long): Long {
         val dt = Instant.fromEpochMilliseconds(epochMs).toLocalDateTime(zone)
