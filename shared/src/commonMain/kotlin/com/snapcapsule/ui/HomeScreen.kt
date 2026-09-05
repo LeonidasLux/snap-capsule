@@ -24,6 +24,7 @@ import com.tencent.kuikly.compose.ui.Alignment
 import com.tencent.kuikly.compose.ui.Modifier
 import com.tencent.kuikly.compose.ui.draw.clip
 import com.tencent.kuikly.compose.ui.graphics.Color
+import com.tencent.kuikly.compose.ui.zIndex
 import com.tencent.kuikly.compose.ui.text.font.FontFamily
 import com.tencent.kuikly.compose.ui.text.font.FontWeight
 import com.tencent.kuikly.compose.ui.unit.dp
@@ -110,9 +111,10 @@ fun HomeScreen() {
                 }
             }
 
-            // 新建 FAB（居中底部）
+            // 新建 FAB（居中底部）—— 显式提升 zIndex，恒浮在列表数据之上
             Box(
                 Modifier
+                    .zIndex(1f)
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 30.dp)
                     .size(56.dp)
