@@ -11,35 +11,49 @@ import com.tencent.kuikly.compose.material3.Text
 import com.tencent.kuikly.compose.ui.Alignment
 import com.tencent.kuikly.compose.ui.Modifier
 import com.tencent.kuikly.compose.ui.draw.clip
+import com.tencent.kuikly.compose.ui.graphics.Color
 import com.tencent.kuikly.compose.ui.unit.dp
 import com.tencent.kuikly.compose.ui.unit.sp
-import com.snapcapsule.data.CapsuleStore
+import com.tencent.kuikly.compose.ui.window.Dialog
+import com.tencent.kuikly.compose.ui.window.DialogProperties
 import com.snapcapsule.theme.Palette
 import kotlinx.coroutines.delay
 
-/** 底部 Toast。 */
+/**
+ * 页面顶部 Toast。
+ *
+ * ModalBottomSheet / 确认框都开在独立 Dialog 窗口里，普通布局层的内容会被它们的遮罩盖住，
+ * 所以这里自己也用 Dialog：后开的窗口叠在最上，弹层打开时提示同样可见。
+ * 透明 scrim（不压暗背景）、点空白不关闭，仅 1.9s 后自动消失。
+ */
 @Composable
 fun ToastHost() {
-    LaunchedEffect(UiState.toastSeq) {
-        if (UiState.toastSeq > 0) {
-            delay(1900)
-            UiState.toastText = null
-        }
-    }
     val text = UiState.toastText ?: return
-    Box(
-        Modifier
-            .fillMaxSize()
-            .padding(bottom = 110.dp),
-        contentAlignment = Alignment.BottomCenter,
+    LaunchedEffect(UiState.toastSeq) {
+        delay(1900)
+        UiState.toastText = null
+    }
+    Dialog(
+        onDismissRequest = { UiState.toastText = null },
+        properties = DialogProperties(
+            dismissOnBackPress = false,
+            dismissOnClickOutside = false,
+            usePlatformDefaultWidth = false,
+            scrimColor = Color.Transparent,
+        ),
     ) {
         Box(
-            Modifier
-                .clip(RoundedCornerShape(12.dp))
-                .background(Palette.fg)
-                .padding(horizontal = 18.dp, vertical = 11.dp)
+            Modifier.fillMaxSize().padding(top = 48.dp),
+            contentAlignment = Alignment.TopCenter,
         ) {
-            Text(text, color = Palette.surface, fontSize = 13.sp)
+            Box(
+                Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Palette.fg)
+                    .padding(horizontal = 18.dp, vertical = 11.dp)
+            ) {
+                Text(text, color = Palette.surface, fontSize = 13.sp)
+            }
         }
     }
 }
