@@ -46,6 +46,5 @@ fun AppShell() {
         EmptyTrashConfirmDialog()
         ClearAllConfirmDialog()
         ImportOfferDialog()
-        ToastHost()
     }
 }

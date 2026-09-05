@@ -32,14 +32,22 @@ object UiState {
     // 清空全部确认
     var confirmClear by mutableStateOf(false)
 
-    // Toast
-    var toastText by mutableStateOf<String?>(null)
-    var toastSeq by mutableStateOf(0)
-
+    /**
+     * 弹出顶部提示。
+     *
+     * 交由 [ToastPresenter] 平台出口展示（Android=系统 Toast，H5=顶部 DOM 提示）。
+     * 两者都是「非模态」覆盖：浮在任何弹层之上、但不会拦截页面点击 —— 这正是本 App
+     * 用平台 Toast 而不用 Compose Dialog 画提示的原因（Compose Dialog 是全屏独立窗口，
+     * 弹出期间整页会不可点）。
+     */
     fun toast(msg: String) {
-        toastText = msg
-        toastSeq++
+        ToastPresenter.show?.invoke(msg)
     }
+}
+
+/** 平台 Toast 出口：由各端装配时挂上真正实现（见 platform/ 各 actual 与 androidApp 壳）。 */
+object ToastPresenter {
+    var show: ((String) -> Unit)? = null
 }
 
 /** 导入等待队列：平台（选文件）读到的文本先放这，UI 统一消费。 */

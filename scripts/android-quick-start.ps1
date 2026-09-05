@@ -15,6 +15,8 @@
 
   开发循环最快用法（代码只在 shared/androidApp 层改动后）：
     .\scripts\android-quick-start.ps1 -SkipBuild -NoRestart
+  持续自动重装（gradle 常驻监听，保存 shared/androidApp 源码即自动编译+装包+重启）：
+    .\scripts\android-watch.ps1                # 见 android-watch.ps1 顶部说明
 #>
 [CmdletBinding()]
 param(
@@ -143,3 +145,4 @@ Write-Host "  · 验证 UI：进 app 右上角 ⚙️ 设置 → 🧹 清空所�
 Write-Host "  · 核对落盘：& `"$adb`" shell run-as $pkg ls -la files/"
 Write-Host "  · 看前台：  & `"$adb`" shell `"dumpsys window | grep mCurrentFocus`""
 Write-Host '  · 再次快速部署：.\scripts\android-quick-start.ps1 -SkipBuild -NoRestart'
+Write-Host '  · 持续开发(存盘即装)：.\scripts\android-watch.ps1'

@@ -8,7 +8,7 @@ class ShellApplication : Application() {
         super.onCreate()
         // 供 shared(androidMain) 读写 filesDir/capsules.json
         AndroidAppContext.init(this)
-        // 注入导出/导入平台处理器（系统分享面板 / 文件选择器）
+        // 注入导出/导入平台处理器与 Toast（系统分享面板 / 文件选择器 / 非模态 Toast）
         ShellBridge.install()
     }
 }
