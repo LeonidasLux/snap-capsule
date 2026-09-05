@@ -19,6 +19,13 @@ fun AppShell() {
         CapsuleStore.ensureLoaded()
     }
 
+    // 打开任一覆盖层/弹层时，先收起可能处于左滑展开的卡片（点别处应收起展开）
+    LaunchedEffect(UiState.showSettings, UiState.showTrash, UiState.detailId, UiState.editorVisible) {
+        if (UiState.showSettings || UiState.showTrash || UiState.detailId != null || UiState.editorVisible) {
+            UiState.swipeOpenId = null
+        }
+    }
+
     // 导入文件文本到达：解析 → 成功弹确认 / 失败 Toast
     LaunchedEffect(ImportDispatcher.pendingText) {
         val pending = ImportDispatcher.pendingText ?: return@LaunchedEffect

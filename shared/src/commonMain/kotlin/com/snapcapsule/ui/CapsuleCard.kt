@@ -157,8 +157,13 @@ fun CapsuleCard(
                     detectTapGestures(
                         onLongPress = { onOpen() },
                         onTap = {
-                            // 点了展开中的卡 → 收回；否则打开详情
-                            if (UiState.swipeOpenId == capsule.id) UiState.swipeOpenId = null else onOpen()
+                            // 点自身（展开中）→ 仅收起；点别的卡片 → 先收起展开态再走正常点击
+                            if (UiState.swipeOpenId == capsule.id) {
+                                UiState.swipeOpenId = null
+                            } else {
+                                if (UiState.swipeOpenId != null) UiState.swipeOpenId = null
+                                onOpen()
+                            }
                         }
                     )
                 },

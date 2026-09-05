@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import com.tencent.kuikly.compose.foundation.background
 import com.tencent.kuikly.compose.foundation.clickable
+import com.tencent.kuikly.compose.foundation.gestures.detectTapGestures
 import com.tencent.kuikly.compose.foundation.layout.Arrangement
 import com.tencent.kuikly.compose.foundation.layout.Box
 import com.tencent.kuikly.compose.foundation.layout.Column
@@ -24,6 +25,7 @@ import com.tencent.kuikly.compose.ui.Alignment
 import com.tencent.kuikly.compose.ui.Modifier
 import com.tencent.kuikly.compose.ui.draw.clip
 import com.tencent.kuikly.compose.ui.graphics.Color
+import com.tencent.kuikly.compose.ui.input.pointer.pointerInput
 import com.tencent.kuikly.compose.ui.zIndex
 import com.tencent.kuikly.compose.ui.text.font.FontFamily
 import com.tencent.kuikly.compose.ui.text.font.FontWeight
@@ -42,7 +44,14 @@ private val ALL_FILTERS = Filter.entries.toList()
 fun HomeScreen() {
     val now = remember { CapsuleStore.now() }
 
-    Column(Modifier.fillMaxSize()) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            // 点击页面空白处：收起可能处于左滑展开的卡片（有按钮/卡片的点击会被其自身消费，不影响）
+            .pointerInput(Unit) {
+                detectTapGestures { UiState.swipeOpenId = null }
+            }
+    ) {
         // 标题栏
         Row(
             Modifier
@@ -62,7 +71,10 @@ fun HomeScreen() {
                 Modifier
                     .size(40.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .clickable { UiState.showSettings = true },
+                    .clickable {
+                        UiState.swipeOpenId = null
+                        UiState.showSettings = true
+                    },
                 contentAlignment = Alignment.Center,
             ) {
                 Text("⚙️", fontSize = 20.sp)
@@ -74,7 +86,10 @@ fun HomeScreen() {
         FilterTabBar(
             tabs = ALL_FILTERS,
             selectedIndex = currentIndex,
-            onSelect = { i -> CapsuleStore.applyFilter(ALL_FILTERS[i]) },
+            onSelect = { i ->
+                CapsuleStore.applyFilter(ALL_FILTERS[i])
+                UiState.swipeOpenId = null
+            },
         )
 
         // 列表区

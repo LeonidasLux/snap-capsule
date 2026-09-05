@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import com.tencent.kuikly.compose.foundation.background
 import com.tencent.kuikly.compose.foundation.clickable
+import com.tencent.kuikly.compose.foundation.gestures.detectTapGestures
 import com.tencent.kuikly.compose.foundation.layout.Arrangement
 import com.tencent.kuikly.compose.foundation.layout.Box
 import com.tencent.kuikly.compose.foundation.layout.Column
@@ -22,6 +23,7 @@ import com.tencent.kuikly.compose.material3.Text
 import com.tencent.kuikly.compose.ui.Alignment
 import com.tencent.kuikly.compose.ui.Modifier
 import com.tencent.kuikly.compose.ui.draw.clip
+import com.tencent.kuikly.compose.ui.input.pointer.pointerInput
 import com.tencent.kuikly.compose.ui.text.font.FontFamily
 import com.tencent.kuikly.compose.ui.text.font.FontWeight
 import com.tencent.kuikly.compose.ui.unit.dp
@@ -44,6 +46,10 @@ fun TrashScreen() {
         Modifier
             .fillMaxSize()
             .background(Palette.bg)
+            // 点击页面空白处：收起可能处于左滑展开的卡片
+            .pointerInput(Unit) {
+                detectTapGestures { UiState.swipeOpenId = null }
+            }
     ) {
         // 顶栏
         Row(
@@ -56,7 +62,10 @@ fun TrashScreen() {
                 Modifier
                     .size(40.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .clickable { UiState.showTrash = false },
+                    .clickable {
+                        UiState.swipeOpenId = null
+                        UiState.showTrash = false
+                    },
                 contentAlignment = Alignment.Center,
             ) {
                 Text("‹", color = Palette.fg, fontSize = 26.sp)
@@ -73,7 +82,10 @@ fun TrashScreen() {
                 Box(
                     Modifier
                         .padding(end = 8.dp)
-                        .clickable { UiState.confirmEmptyTrash = true }
+                        .clickable {
+                            UiState.swipeOpenId = null
+                            UiState.confirmEmptyTrash = true
+                        }
                         .padding(8.dp)
                 ) {
                     Text("🗑 清空", color = Palette.danger, fontSize = 14.sp)
