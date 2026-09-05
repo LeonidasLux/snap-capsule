@@ -30,44 +30,33 @@ setx JAVA_HOME "E:\Projects\github\kuikly_work\tools\jdk-17.0.20.1+1"   # 或临
 
 ## H5（浏览器实时预览/静态托管）
 
-开发预览：
+> 完整启动步骤（命令**分开执行**防乱序、旧包自查、无头 DOM 核对、数据操作）见根目录 **`H5_STARTUP.md`**；这里只留速览与状态说明。
+
+开发预览（三条 gradle **分开执行**，同一次调用会并行乱序导致读到旧业务包）：
 
 ```powershell
-npm install   # 仅当用根 package.json 静态服务时需要；本仓库未带则跳过
-.\gradlew.bat :shared:packLocalJsBundleDebug
-.\gradlew.bat :h5App:prepareDevBusiness
-.\gradlew.bat :h5App:jsBrowserDevelopmentRun -t     # dev server :8080
+.\gradlew.bat :shared:packLocalJsBundleDebug     # 先打最新业务包 nativevue2.zip
+.\gradlew.bat :h5App:prepareDevBusiness          # 再解压到 h5App 的 dev page
+.\gradlew.bat :h5App:jsBrowserDevelopmentRun -t  # dev server :8080
 # 浏览器 http://localhost:8080/?page_name=home
 ```
 
-静态产物（任意静态服务器托管）：
+静态产物（分两次执行，pack 与 publish 同一次调用会乱序导致 page 为空）：
 
 ```powershell
-# 注：分两步执行（同一次调用中 pack 与 publish 无依赖会乱序，导致 page 为空）
 .\gradlew.bat :shared:packLocalJSBundleRelease
 .\gradlew.bat :h5App:publishLocalJSBundle
-# 用仓库自带零依赖静态服务器：
 node scripts\static-server.mjs 8080
 # 打开 http://localhost:8080/?page_name=home
 ```
 
-开发预览（dev-server 不含业务 page，仅用于壳代码热更；业务包需先解到 processedResources）：
-
-```powershell
-.\gradlew.bat :shared:packLocalJsBundleDebug
-.\gradlew.bat :h5App:prepareDevBusiness
-.\gradlew.bat :h5App:jsBrowserDevelopmentRun -t
-```
-
-> 说明：`shared` 被 Kuikly 插件打成 `nativevue2` 业务 JS 包，由 h5App 壳在同页加载；
+> 说明：`shared` 由 Kuikly 插件打成 `nativevue2` 业务 JS 包，由 h5App 壳在同页加载；
 > 持久化走 `window.localStorage["snap_capsules"]`，导出=浏览器下载，导入=文件选择。
 
-> ⚠️ **H5 预览当前状态（2026-09）**：宿主壳(h5App)与业务(nativevue2)是两个独立 Kotlin/JS bundle，
-> 各自 UMD 会把自身的点分命名空间导出到 `window.com.*`，壳加载时会**覆盖**业务挂在
-> `window.com.tencent.kuikly.core.nvi` 上的 `registerCallNative`（壳不含该 nvi），导致
-> `registerCallNative … reading 'registerCallNative'` → 业务回退调用 `callNative`（未定义）→ 白屏。
-> 业务单独加载时一切就位（headless 验证过）。需框架侧单 bundle 形态或官方模板一致打包才能点亮；
-> 本仓库 Android 端已完整可视化验证（见 `docs/screenshots/`），H5 建议以官方脚手架的打包链路为准复测。
+> ✅ **H5 预览状态（2026-09 实测更新）**：dev server 形态已可正常渲染与交互（DOM 文本可读可点），
+> 已用它完成顶部 toast 位置验证，见 `docs/screenshots/h5-toast-top-48-empty-save.png`。
+> 早前记录的“壳(h5App)与业务(nativevue2)双 bundle UMD 互相覆盖 `window.com.*` → 白屏”现象，在 dev server 形态下未复现；
+> 静态壳 release 形态若复现白屏，以 Android 端（`STARTUP.md`）为可视化验证基准，并按 `H5_STARTUP.md`「常见坑」排查页面版本是否过旧。
 
 ## iOS（需 macOS + Xcode + CocoaPods）
 

@@ -29,7 +29,9 @@ docs/PLATFORMS.md   iOS / 鸿蒙接入指南
 
 ## 运行
 
-详见 [`docs/PLATFORMS.md`](docs/PLATFORMS.md)。
+- H5（浏览器）启动 → [`H5_STARTUP.md`](H5_STARTUP.md)（开发预览 / 静态托管 / 常见坑）
+- Android 启动 → [`STARTUP.md`](STARTUP.md)
+- iOS / 鸿蒙接入 → [`docs/PLATFORMS.md`](docs/PLATFORMS.md)
 
 ```powershell
 # H5 静态预览（最快，分两步避免任务乱序）

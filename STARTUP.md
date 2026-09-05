@@ -1,7 +1,7 @@
 # 闪念胶囊 · 启动指南（Android）
 
 > 面向本机（Windows 11）当前开发环境：如何把「闪念胶囊」的 app 窗口在 **Android 模拟器 / 真机** 上构建、安装并跑起来。
-> H5 端状态与 iOS / 鸿蒙见 `docs/PLATFORMS.md`（H5 当前白屏，Android 是唯一已可视化验证的端）。
+> H5（浏览器）启动见根目录 `H5_STARTUP.md`；iOS / 鸿蒙接入见 `docs/PLATFORMS.md`。Android 是本仓库可视化验证的主端。
 
 ## 环境速览（本机实测）
 

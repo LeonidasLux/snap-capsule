@@ -77,8 +77,9 @@ if ($devs.Count -gt 0) {
     if (-not (Test-Path $emu)) { throw "找不到 emulator：$emu" }
     $avds = @(& $emu -list-avds)
     if ($Avd -notin $avds) { throw "AVD [$Avd] 不存在；可用：$($avds -join ', ')" }
-    Write-Host "无在线设备，启动 AVD [$Avd]（模拟器窗口将弹出，首次启动可能较慢）…"
-    Start-Process -FilePath $emu -ArgumentList @('-avd', $Avd, '-no-snapshot-save', '-no-boot-anim')
+    # 冷启动：-no-snapshot-load 启动时不回放上次退出的快照（否则窗口一弹出先闪历史 app 页面）
+    Write-Host "无在线设备，启动 AVD [$Avd]（模拟器窗口将弹出，冷启动引导会比快照恢复慢一些）…"
+    Start-Process -FilePath $emu -ArgumentList @('-avd', $Avd, '-no-snapshot-load', '-no-snapshot-save', '-no-boot-anim')
     Write-Host '等待设备连接…'
     & $adb wait-for-device
     Start-Sleep -Seconds 2
