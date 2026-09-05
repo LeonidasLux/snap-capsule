@@ -104,7 +104,7 @@ fun HomeScreen() {
                                     UiState.toast("已归档")
                                 }
                             },
-                            onDelete = { UiState.confirmDeleteId = c.id },
+                            onSecondary = { CapsuleStore.trash(c.id); UiState.toast("已移入回收站") },
                             onOpen = { UiState.detailId = c.id },
                         )
                     }

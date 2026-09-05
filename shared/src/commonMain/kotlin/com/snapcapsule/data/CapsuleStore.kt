@@ -26,6 +26,7 @@ object CapsuleStore {
     val totalCount: Int get() = listState.size
     val activeCount: Int get() = listState.count { it.status == Status.ACTIVE }
     val archivedCount: Int get() = listState.count { it.status == Status.ARCHIVED }
+    val trashedCount: Int get() = listState.count { it.status == Status.TRASHED }
 
     fun now(): Long = Clock.System.now().toEpochMilliseconds()
 
@@ -85,13 +86,31 @@ object CapsuleStore {
         persist()
     }
 
+    /** 恢复：归档箱/回收站的条目统一回到主页（ACTIVE）。 */
     fun restore(id: Long) {
         listState = listState.map { if (it.id == id) it.copy(status = Status.ACTIVE) else it }
         persist()
     }
 
-    fun delete(id: Long) {
+    /** 移入回收站（软删除）：主页与归档箱点「删除」即置 TRASHED，可从回收站恢复。 */
+    fun trash(id: Long) {
+        listState = listState.map { if (it.id == id) it.copy(status = Status.TRASHED) else it }
+        persist()
+    }
+
+    /** 回收站当前内容（创建时间降序）。 */
+    fun trashed(): List<Capsule> =
+        listState.filter { it.status == Status.TRASHED }.sortedByDescending { it.createdAt }
+
+    /** 彻底删除一条：仅从回收站调用，不可恢复。 */
+    fun purge(id: Long) {
         listState = listState.filterNot { it.id == id }
+        persist()
+    }
+
+    /** 清空回收站：全部彻底删除。 */
+    fun emptyTrash() {
+        listState = listState.filterNot { it.status == Status.TRASHED }
         persist()
     }
 
@@ -122,7 +141,7 @@ object CapsuleStore {
         return true
     }
 
-    /** 导出全文（含归档）即当前全部数据。 */
+    /** 导出全文（含归档、回收站）即当前全部数据。 */
     fun exportJson(): String = JsonCodec.encode(listState)
 
     fun importText(text: String): DecodeResult = JsonCodec.decode(text)

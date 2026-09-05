@@ -66,6 +66,10 @@ fun SettingsScreen() {
             SettingsRow("🧹  载入示例数据", right = if (CapsuleStore.totalCount == 0) "当前为空" else "仅空列表可用") {
                 if (CapsuleStore.loadSampleIfEmpty()) UiState.toast("已载入示例数据") else UiState.toast("请先清空再载入示例")
             }
+            SettingsRow("🗑  回收站", right = if (CapsuleStore.trashedCount == 0) "空" else "共 ${CapsuleStore.trashedCount} 条") {
+                UiState.showSettings = false
+                UiState.showTrash = true
+            }
             SettingsRow("📊  数据总量", right = "共 ${CapsuleStore.totalCount} 条", clickable = false)
             SettingsRow("🗑  清空所有数据", right = "不可恢复", danger = true) {
                 if (CapsuleStore.totalCount == 0) UiState.toast("已没有数据")

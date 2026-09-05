@@ -32,9 +32,11 @@ fun AppShell() {
     Box(Modifier.fillMaxSize().background(Palette.bg)) {
         HomeScreen()
         if (UiState.showSettings) SettingsScreen()
+        if (UiState.showTrash) TrashScreen()
         EditorSheet()
         DetailSheet()
         DeleteConfirmDialog()
+        EmptyTrashConfirmDialog()
         ClearAllConfirmDialog()
         ImportOfferDialog()
         ToastHost()

@@ -46,11 +46,14 @@ import com.snapcapsule.util.TimeText
 import kotlin.math.roundToInt
 
 private const val ACTION_PX = 96f
+/** 右侧动作面板总宽：主动作 + 次动作两格并排。 */
+private const val REVEAL_PX = ACTION_PX * 2f
 
 /**
  * 可滑动胶囊卡片：白色圆角卡片 + 左侧分类色条 + 两行正文 + 换行标签 + 相对时间。
- * 手势：单击/长按→详情；左滑→露出右侧动作（active=删除）；右滑→露出左侧动作（active=归档，archived=恢复）。
- * 拖到位松手吸附，点露出的动作区执行；卡片点一下回弹。
+ * 手势：只支持左滑——手指左滑使卡片向左移，露出右侧两格动作面板
+ * （primary=主动作「归档/恢复」，secondary=次动作「删除/彻底删除」，由调用场景传参）。
+ * 拖过一半自动吸附全展开，点露出的动作区执行；卡片点一下回弹；右滑不展开动作。
  */
 @Composable
 fun CapsuleCard(
@@ -59,7 +62,9 @@ fun CapsuleCard(
     primaryLabel: String,
     primaryColor: Color,
     onPrimary: () -> Unit,
-    onDelete: () -> Unit,
+    secondaryLabel: String = "删除",
+    secondaryColor: Color = Palette.danger,
+    onSecondary: () -> Unit,
     onOpen: () -> Unit,
 ) {
     val catColor = Palette.catColor(capsule.cat)
@@ -67,21 +72,29 @@ fun CapsuleCard(
     var offsetPx by remember(capsule.id) { mutableFloatStateOf(0f) }
 
     fun snap() {
-        offsetPx = when {
-            offsetPx <= -ACTION_PX * 0.55f -> -ACTION_PX
-            offsetPx >= ACTION_PX * 0.55f -> ACTION_PX
-            else -> 0f
-        }
+        offsetPx = if (offsetPx <= -REVEAL_PX * 0.5f) -REVEAL_PX else 0f
     }
 
     Box(Modifier.fillMaxWidth().clip(shape)) {
-        // 底层动作区：尺寸对齐上层卡片
+        // 底层动作区：尺寸对齐上层卡片。右侧并排两格——主动作贴最右、次动作靠左，
+        // 卡片向左滑开后才露出来（右滑不会展开）。
         Box(
             Modifier
                 .matchParentSize()
                 .background(Color.Transparent)
         ) {
             Row(Modifier.fillMaxSize()) {
+                Spacer(Modifier.weight(1f))
+                Box(
+                    Modifier
+                        .width(ACTION_PX.dp)
+                        .fillMaxHeight()
+                        .background(secondaryColor)
+                        .clickable { onSecondary() },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(secondaryLabel, color = Palette.onAccent, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                }
                 Box(
                     Modifier
                         .width(ACTION_PX.dp)
@@ -91,17 +104,6 @@ fun CapsuleCard(
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(primaryLabel, color = Palette.onAccent, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                }
-                Spacer(Modifier.weight(1f))
-                Box(
-                    Modifier
-                        .width(ACTION_PX.dp)
-                        .fillMaxHeight()
-                        .background(Palette.danger)
-                        .clickable { onDelete() },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text("删除", color = Palette.onAccent, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -117,7 +119,7 @@ fun CapsuleCard(
                         onDragEnd = { snap() },
                         onHorizontalDrag = { change, dragAmount ->
                             change.consume()
-                            offsetPx = (offsetPx + dragAmount).coerceIn(-ACTION_PX, ACTION_PX)
+                            offsetPx = (offsetPx + dragAmount).coerceIn(-REVEAL_PX, 0f)
                         }
                     )
                 }

@@ -12,13 +12,16 @@ enum class Cat {
     LIFE,
 }
 
-/** 状态：active 在主页展示；archived 进归档箱。 */
+/** 状态：active 在主页展示；archived 进归档箱；trashed 在回收站（软删除，可恢复）。 */
 enum class Status {
     @SerialName("active")
     ACTIVE,
 
     @SerialName("archived")
     ARCHIVED,
+
+    @SerialName("trashed")
+    TRASHED,
 }
 
 /** 顶部筛选 Tab。 */

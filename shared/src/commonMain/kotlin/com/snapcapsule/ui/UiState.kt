@@ -7,7 +7,11 @@ import com.snapcapsule.model.Capsule
 
 /** 顶层 UI 状态（单页状态机的各处开关与确认位）。 */
 object UiState {
+    // 设置
     var showSettings by mutableStateOf(false)
+
+    // 回收站整屏覆盖层
+    var showTrash by mutableStateOf(false)
 
     // 新建/编辑
     var editorVisible by mutableStateOf(false)
@@ -16,8 +20,11 @@ object UiState {
     // 详情
     var detailId by mutableStateOf<Long?>(null)
 
-    // 删除确认（含删除当前胶囊 id）
+    // 彻底删除确认（回收站内单条）
     var confirmDeleteId by mutableStateOf<Long?>(null)
+
+    // 清空回收站确认
+    var confirmEmptyTrash by mutableStateOf(false)
 
     // 清空全部确认
     var confirmClear by mutableStateOf(false)

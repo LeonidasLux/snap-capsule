@@ -103,24 +103,36 @@ fun DetailSheet() {
             }
             Spacer(Modifier.height(8.dp))
 
-            // 操作行
-            DetailRow("✏️  编辑内容") {
-                CapsuleStore.let { }
-                UiState.detailId = null
-                UiState.editingId = c.id
-                UiState.editorVisible = true
-            }
-            DetailRow("📂  移动分类") { showCat = !showCat }
-            if (c.status == Status.ARCHIVED) {
-                DetailRow("↩️  恢复到当前列表", color = Palette.life) {
+            // 操作行：回收站条目只给恢复/彻底删除；主列表与归档箱给编辑/分类/归档与移入回收站
+            if (c.status == Status.TRASHED) {
+                DetailRow("↩️  恢复到主列表", color = Palette.life) {
                     CapsuleStore.restore(c.id)
-                    UiState.toast("已恢复")
+                    UiState.toast("已恢复到当前列表")
                     UiState.detailId = null
                 }
-            }
-            DetailRow("🗑  删除此条", color = Palette.danger) {
-                UiState.detailId = null
-                UiState.confirmDeleteId = c.id
+                DetailRow("🗑  彻底删除", color = Palette.danger) {
+                    UiState.detailId = null
+                    UiState.confirmDeleteId = c.id
+                }
+            } else {
+                DetailRow("✏️  编辑内容") {
+                    UiState.detailId = null
+                    UiState.editingId = c.id
+                    UiState.editorVisible = true
+                }
+                DetailRow("📂  移动分类") { showCat = !showCat }
+                if (c.status == Status.ARCHIVED) {
+                    DetailRow("↩️  恢复到当前列表", color = Palette.life) {
+                        CapsuleStore.restore(c.id)
+                        UiState.toast("已恢复")
+                        UiState.detailId = null
+                    }
+                }
+                DetailRow("🗑  移入回收站", color = Palette.danger) {
+                    CapsuleStore.trash(c.id)
+                    UiState.toast("已移入回收站")
+                    UiState.detailId = null
+                }
             }
         }
     }

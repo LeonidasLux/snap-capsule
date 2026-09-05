@@ -31,21 +31,39 @@ import com.snapcapsule.data.CapsuleStore
 import com.snapcapsule.theme.Palette
 import com.snapcapsule.theme.Radius
 
-/** 删除单条确认。 */
+/** 回收站内「彻底删除」单条确认（不可恢复，故需确认）。 */
 @Composable
 fun DeleteConfirmDialog() {
     val id = UiState.confirmDeleteId
     if (id == null) return
     ConfirmCard(
-        title = "删除这条胶囊？",
-        sub = "删除后将无法恢复",
-        confirmText = "删除",
+        title = "彻底删除这条胶囊？",
+        sub = "将从回收站删除，无法恢复",
+        confirmText = "彻底删除",
         confirmColor = Palette.danger,
         onDismiss = { UiState.confirmDeleteId = null },
         onConfirm = {
-            CapsuleStore.delete(id)
+            CapsuleStore.purge(id)
             UiState.confirmDeleteId = null
-            UiState.toast("已删除")
+            UiState.toast("已彻底删除")
+        },
+    )
+}
+
+/** 清空回收站确认。 */
+@Composable
+fun EmptyTrashConfirmDialog() {
+    if (!UiState.confirmEmptyTrash) return
+    ConfirmCard(
+        title = "清空回收站？",
+        sub = "共 ${CapsuleStore.trashedCount} 条将被彻底删除，无法恢复",
+        confirmText = "清空",
+        confirmColor = Palette.danger,
+        onDismiss = { UiState.confirmEmptyTrash = false },
+        onConfirm = {
+            CapsuleStore.emptyTrash()
+            UiState.confirmEmptyTrash = false
+            UiState.toast("回收站已清空")
         },
     )
 }
