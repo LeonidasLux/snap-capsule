@@ -27,6 +27,8 @@ object ShellBridge {
     fun install() {
         CapBridge.onExportJson = { _fileName, text -> share(currentActivity, text) }
         CapBridge.onPickImportFile = { pick(currentActivity) }
+        // 是否开发/调试构建（BuildConfig.DEBUG）——决定 shared UI header 是否显示构建时间
+        CapBridge.isDebugBuild = BuildConfig.DEBUG
         // Toast 用系统 Toast（非模态、浮在所有弹层之上且不拦截点击）；
         // 若用 Compose Dialog 画提示，全屏模态窗口会让弹出期间整页不可点。
         ToastPresenter.show = { msg -> showToast(msg) }

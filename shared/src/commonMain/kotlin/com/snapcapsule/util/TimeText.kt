@@ -56,4 +56,11 @@ object TimeText {
         val y = if (dt.year == thisYear) "" else "${dt.year}年"
         return "${y}${dt.monthNumber}月${dt.dayOfMonth}日"
     }
+
+    /** 构建/调试戳：本地时区的「MM-dd HH:mm:ss」（两位补零）。 */
+    fun stamp(epochMs: Long): String {
+        val dt = Instant.fromEpochMilliseconds(epochMs).toLocalDateTime(zone)
+        fun p(v: Int) = v.toString().padStart(2, '0')
+        return "${p(dt.monthNumber)}-${p(dt.dayOfMonth)} ${p(dt.hour)}:${p(dt.minute)}:${p(dt.second)}"
+    }
 }

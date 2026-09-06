@@ -62,6 +62,9 @@ object CapBridge {
 
     /** 唤起“选择文件导入”。 */
     var onPickImportFile: (() -> Unit)? = null
+
+    /** 是否开发/调试构建（Android=BuildConfig.DEBUG，H5=恒 true）。决定 header 是否显示构建时间。 */
+    var isDebugBuild: Boolean = false
 }
 
 /** 导入预览（供确认对话框）。 */

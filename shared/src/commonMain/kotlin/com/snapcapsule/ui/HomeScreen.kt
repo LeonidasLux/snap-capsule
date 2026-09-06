@@ -34,8 +34,10 @@ import com.tencent.kuikly.compose.ui.unit.sp
 import com.snapcapsule.data.CapsuleStore
 import com.snapcapsule.model.Capsule
 import com.snapcapsule.model.Filter
+import com.snapcapsule.platform.BuildInfo
 import com.snapcapsule.theme.Palette
 import com.snapcapsule.theme.Radius
+import com.snapcapsule.util.TimeText
 
 private val ALL_FILTERS = Filter.entries.toList()
 
@@ -79,6 +81,16 @@ fun HomeScreen() {
             ) {
                 Text("⚙️", fontSize = 20.sp)
             }
+        }
+
+        // 仅开发/调试构建：标题下方显示本次构建时刻（辅助确认装到的是最新产物）
+        if (CapBridge.isDebugBuild) {
+            Text(
+                text = "开发构建 ${TimeText.stamp(BuildInfo.BUILD_EPOCH_MS)}",
+                color = Palette.muted,
+                fontSize = 10.sp,
+                modifier = Modifier.padding(start = 22.dp, bottom = 6.dp),
+            )
         }
 
         // 筛选

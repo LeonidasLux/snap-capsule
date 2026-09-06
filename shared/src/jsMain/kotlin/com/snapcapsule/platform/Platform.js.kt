@@ -5,6 +5,9 @@ import com.snapcapsule.ui.ImportDispatcher
 import com.snapcapsule.ui.ToastPresenter
 
 actual fun installPlatformHandlers() {
+    // H5 本地即开发运行：header 显示构建时刻
+    CapBridge.isDebugBuild = true
+
     // 导出：浏览器下载 JSON 文件
     CapBridge.onExportJson = { fileName, text ->
         val download: dynamic = js(
