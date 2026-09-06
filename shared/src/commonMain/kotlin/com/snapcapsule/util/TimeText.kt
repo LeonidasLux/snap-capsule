@@ -49,10 +49,24 @@ object TimeText {
         return "${y}${dt.monthNumber}月${dt.dayOfMonth}日"
     }
 
-    /** 构建/调试戳：本地时区的「MM-dd HH:mm:ss」（两位补零）。 */
+    /**
+     * 构建/调试戳：北京时间的「MM-dd HH:mm:ss」（两位补零）。
+     * 北京 = UTC+8 且无夏令时：把 epoch 平移 +8h 后在 UTC 下读墙钟即可。
+     * 不沿用设备时区（模拟器默认 GMT，会把构建时刻显示成早 8 小时 / 跨前一天），也不引入 IANA 时区依赖。
+     */
     fun stamp(epochMs: Long): String {
-        val dt = Instant.fromEpochMilliseconds(epochMs).toLocalDateTime(zone)
+        val dt = Instant.fromEpochMilliseconds(epochMs + 8L * 3_600_000L).toLocalDateTime(TimeZone.UTC)
         fun p(v: Int) = v.toString().padStart(2, '0')
         return "${p(dt.monthNumber)}-${p(dt.dayOfMonth)} ${p(dt.hour)}:${p(dt.minute)}:${p(dt.second)}"
+    }
+
+    /**
+     * 抽屉「更多」里的完整时间：设备本地时区「M月D日 HH:mm」（对齐 v2-1 原型的 stamp）。
+     * 胶囊是用户数据，展示按其设备时区，与 [stamp]（北京固定给构建 header）不同。
+     */
+    fun meta(epochMs: Long): String {
+        val dt = Instant.fromEpochMilliseconds(epochMs).toLocalDateTime(zone)
+        fun p(v: Int) = v.toString().padStart(2, '0')
+        return "${dt.monthNumber}月${dt.dayOfMonth}日 ${p(dt.hour)}:${p(dt.minute)}"
     }
 }

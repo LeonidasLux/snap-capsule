@@ -150,6 +150,7 @@ fun HomeScreen() {
                                 // 对齐 v2：点卡片直接进可编辑抽屉（查看 + 编辑一体）
                                 onOpen = {
                                     UiState.swipeOpenId = null
+                                    UiState.viewingId = null
                                     UiState.editingId = c.id
                                     UiState.editorVisible = true
                                 },
@@ -169,6 +170,7 @@ fun HomeScreen() {
                     .clip(RoundedCornerShape(50))
                     .background(Palette.accent)
                     .clickable {
+                        UiState.viewingId = null
                         UiState.editingId = null
                         UiState.editorVisible = true
                     },

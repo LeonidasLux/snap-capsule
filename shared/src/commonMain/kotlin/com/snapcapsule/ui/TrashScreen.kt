@@ -114,7 +114,16 @@ fun TrashScreen() {
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 items(items = items, key = { it.id }) { c ->
-                    TrashItem(c, now)
+                    TrashItem(
+                        capsule = c,
+                        now = now,
+                        onView = {
+                            // 复用编辑抽屉的只读查看态
+                            UiState.editingId = null
+                            UiState.editorVisible = false
+                            UiState.viewingId = c.id
+                        },
+                    )
                 }
             }
         }
@@ -122,7 +131,7 @@ fun TrashScreen() {
 }
 
 @Composable
-private fun TrashItem(capsule: Capsule, now: Long) {
+private fun TrashItem(capsule: Capsule, now: Long, onView: () -> Unit) {
     val shape = RoundedCornerShape(Radius.card)
     Column(
         Modifier
@@ -130,20 +139,22 @@ private fun TrashItem(capsule: Capsule, now: Long) {
             .background(Palette.surface, shape)
             .padding(start = 15.dp, end = 15.dp, top = 13.dp, bottom = 13.dp)
     ) {
-        // 正文（回收站里看全，不截断）
-        Text(
-            text = capsule.text,
-            color = Palette.fg,
-            fontSize = 14.sp,
-            lineHeight = 21.sp,
-        )
-        Text(
-            text = "${CAT_META[capsule.cat]} · ${TimeText.relative(capsule.createdAt, now)}",
-            color = Palette.muted,
-            fontSize = 12.sp,
-            fontFamily = FontFamily.Monospace,
-            modifier = Modifier.padding(top = 8.dp),
-        )
+        // 点击正文区 → 以「查看胶囊」只读复用编辑抽屉（对齐 v2-1：回收站条目可查看）
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { onView() }) {
+            Text(
+                text = capsule.text,
+                color = Palette.fg,
+                fontSize = 14.sp,
+                lineHeight = 21.sp,
+            )
+            Text(
+                text = "${CAT_META[capsule.cat]} · 创建于 ${TimeText.relative(capsule.createdAt, now)}",
+                color = Palette.muted,
+                fontSize = 12.sp,
+                fontFamily = FontFamily.Monospace,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+        }
         // 动作：恢复 / 彻底删除（按钮式，无需左滑即可操作）
         Row(Modifier.fillMaxWidth().padding(top = 12.dp)) {
             TrashButton("恢复", Palette.fgSoft, Palette.fg, Modifier.weight(1f)) {

@@ -80,7 +80,7 @@ object JsonCodec {
             }
 
             2 -> try {
-                json.decodeFromString<CapsuleFile>(trimmed).capsules
+                json.decodeFromString<CapsuleFile>(trimmed).capsules.map { withUpdatedFallback(it) }
             } catch (t: Throwable) {
                 return DecodeResult.Err("不是有效的 JSON 文件（${t.message?.take(60) ?: "解析失败"}）")
             }
@@ -107,16 +107,22 @@ object JsonCodec {
         return DecodeResult.Ok(merged)
     }
 
-    /** v1 三态 → v2 双布尔迁移。 */
+    /** v1 三态 → v2 双布尔迁移：无更新时间记录，updatedAt 取创建时刻、completedAt 置空。 */
     private fun CapsuleV1.toV2(): Capsule = Capsule(
         id = id,
         text = text,
         cat = cat,
         tags = tags,
         createdAt = createdAt,
+        updatedAt = createdAt,
+        completedAt = null,
         done = status == "archived",
         trashed = status == "trashed",
     )
+
+    /** 旧 v2 数据缺 updatedAt（默认 0）时回填为创建时刻。 */
+    private fun withUpdatedFallback(c: Capsule): Capsule =
+        if (c.updatedAt <= 0L) c.copy(updatedAt = c.createdAt) else c
 
     /**
      * 示例数据：50 条，时间从几分钟前到约 3 年前（横跨三年）。
@@ -135,17 +141,25 @@ object JsonCodec {
             ago: Long,
             done: Boolean = false,
             trashed: Boolean = false,
-        ) = Capsule(id = id, text = text, cat = cat, tags = tags, createdAt = now - ago, done = done, trashed = trashed)
+            updatedAgo: Long? = null,   // 缺省=创建时刻（未再编辑）
+            completedAgo: Long? = null, // 缺省=创建时刻（完成胶囊仍可见）
+        ) = Capsule(
+            id = id, text = text, cat = cat, tags = tags,
+            createdAt = now - ago,
+            updatedAt = now - (updatedAgo ?: ago),
+            completedAt = if (done) now - (completedAgo ?: ago) else null,
+            done = done, trashed = trashed,
+        )
 
         return listOf(
             // —— 今天 · 近一周（新 → 旧） ——
             mk(201, "把测试反馈的首页空态文案对比度问题转给前端，附上复现路径和录屏链接", Cat.WORK, listOf("工作", "沟通"), 1 * minute, done = true),
             mk(202, "记得取今晚话剧的票，19:30 前到剧场，地铁 E 口出", Cat.LIFE, listOf("生活"), 8 * minute),
-            mk(203, "灰度方案补充一个回归对照组，避免把大盘波动误判成实验收益", Cat.WORK, listOf("工作", "数据分析"), 2 * hour),
+            mk(203, "灰度方案补充一个回归对照组，避免把大盘波动误判成实验收益", Cat.WORK, listOf("工作", "数据分析"), 2 * hour, updatedAgo = 10 * minute),
             mk(204, "给阳台的多肉换盆，顺便补一次缓释肥", Cat.LIFE, listOf("生活", "家居"), 5 * hour + 30 * minute),
             mk(205, "把《注意力是新的货币》里的要点摘进下周分享", Cat.WORK, listOf("阅读"), 11 * hour),
             mk(206, "妈妈生日前挑个按摩仪，预算 800 以内，避开噪音大的那几款", Cat.LIFE, listOf("家庭"), 1 * day + 3 * hour),
-            mk(207, "梳理 Q3 复盘数据，标注三个超预期的改动点", Cat.WORK, listOf("工作", "复盘"), 1 * day + 20 * hour),
+            mk(207, "梳理 Q3 复盘数据，标注三个超预期的改动点", Cat.WORK, listOf("工作", "复盘"), 1 * day + 20 * hour, updatedAgo = 3 * hour),
             mk(208, "约老周周六早上去爬山，天气好的话顺带拍日出", Cat.LIFE, listOf("朋友"), 3 * day),
             mk(209, "竞品新版本加了快捷手势，原型里加一版左滑置顶做 A/B 素材", Cat.WORK, listOf("产品", "调研"), 4 * day + 6 * hour),
             mk(210, "把旧手机照片备份到网盘，腾出空间再给孩子录几条语音", Cat.LIFE, listOf("数码"), 5 * day + 9 * hour),
@@ -157,7 +171,7 @@ object JsonCodec {
             mk(215, "版本发布前把数据库备份脚本在预发环境完整跑通一次", Cat.WORK, listOf("运维"), 26 * day),
             mk(216, "灵感：把相机改成「先按快门再构图」的模式，拍街景更随性", Cat.LIFE, listOf("灵感"), 33 * day),
             // —— 近一个季度 ——
-            mk(217, "把用户访谈里「导出后找不到文件」的反馈整理成独立工单", Cat.WORK, listOf("产品"), 41 * day, done = true),
+            mk(217, "把用户访谈里「导出后找不到文件」的反馈整理成独立工单", Cat.WORK, listOf("产品"), 41 * day, done = true, updatedAgo = 2 * day, completedAgo = 2 * day),
             mk(218, "给爸妈写一页图文，教他们识别 AI 换脸诈骗电话", Cat.LIFE, listOf("家庭"), 50 * day),
             mk(219, "把设计稿的间距统一收敛到 4/8/12 的栅格体系", Cat.WORK, listOf("设计"), 61 * day),
             mk(220, "附近新开的川菜馆约同事去试，先记着人均和营业时间", Cat.LIFE, listOf("生活"), 74 * day, trashed = true),
@@ -171,7 +185,7 @@ object JsonCodec {
             mk(227, "重构权限模块前先补一轮用例，避免回归把老逻辑打坏", Cat.WORK, listOf("代码"), 214 * day),
             mk(228, "报了个周末陶艺课，把一直想做的杯子做出来", Cat.LIFE, listOf("学习"), 242 * day),
             // —— 近一年 ——
-            mk(229, "把客服高频问题沉淀成帮助中心文章，减少重复咨询", Cat.WORK, listOf("文档"), 272 * day, done = true),
+            mk(229, "把客服高频问题沉淀成帮助中心文章，减少重复咨询", Cat.WORK, listOf("文档"), 272 * day, done = true, updatedAgo = 120 * day, completedAgo = 120 * day),
             mk(230, "寒假带爸妈去南方海边，避开春节人潮", Cat.LIFE, listOf("家庭", "旅行"), 304 * day),
             mk(231, "手势冲突评审：确认长按与左滑在不同场景的边界", Cat.WORK, listOf("会议"), 338 * day),
             mk(232, "把闲置的 Kindle 挂出去，换成能看批注的墨水屏", Cat.LIFE, listOf("数码"), 374 * day),
@@ -188,14 +202,14 @@ object JsonCodec {
             mk(241, "把测试环境造数脚本参数化，减少手工拼 JSON", Cat.WORK, listOf("代码"), 788 * day),
             mk(242, "给车窗换膜，比价三家再定，问清质保年限", Cat.LIFE, listOf("数码"), 844 * day),
             mk(243, "把去年的 OKR 复盘结论整理成一页纸，给今年定目标做参照", Cat.WORK, listOf("复盘"), 902 * day),
-            mk(244, "第一次跑半马完赛，记下后半程补给的节奏心得", Cat.LIFE, listOf("健康"), 962 * day, done = true),
+            mk(244, "第一次跑半马完赛，记下后半程补给的节奏心得", Cat.LIFE, listOf("健康"), 962 * day, done = true, updatedAgo = 700 * day, completedAgo = 700 * day),
             mk(245, "图片 CDN 切到新服务商前，先跑一周双写比对", Cat.WORK, listOf("运维"), 1024 * day),
             // —— 三年前（最早的一批） ——
             mk(246, "把旅行照片按城市归档，每城挑十张做成相册", Cat.LIFE, listOf("旅行"), 1088 * day),
             mk(247, "整理技术分享初稿，补充图表后投公司内刊", Cat.WORK, listOf("文档"), 1102 * day, trashed = true),
             mk(248, "搬进新家第一周：记下厨房下水慢，要请师傅通一次", Cat.LIFE, listOf("家居"), 1110 * day),
             mk(249, "重构支付回调的幂等逻辑，先写清边界再动代码", Cat.WORK, listOf("代码"), 1118 * day),
-            mk(250, "第一次露营：帐篷别搭在风口，防潮垫要带够", Cat.LIFE, listOf("旅行"), 1130 * day),
+            mk(250, "第一次露营：帐篷别搭在风口，防潮垫要带够", Cat.LIFE, listOf("旅行"), 1130 * day, done = true, updatedAgo = 1000 * day, completedAgo = 1000 * day),
         )
     }
 }

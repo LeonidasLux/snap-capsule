@@ -202,10 +202,17 @@ fun CapsuleCard(
                     }
                     Spacer(Modifier.width(10.dp))
                     Text(
-                        text = TimeText.relative(capsule.createdAt, now),
+                        // 已完成 → 显示「完成于」完成时刻；否则「创建于」创建时刻（对齐 v2-1 原型脚注）
+                        text = if (capsule.done && capsule.completedAt != null) {
+                            "完成于 " + TimeText.relative(capsule.completedAt, now)
+                        } else {
+                            "创建于 " + TimeText.relative(capsule.createdAt, now)
+                        },
                         color = Palette.muted,
                         fontSize = 12.sp,
                         fontFamily = FontFamily.Monospace,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }

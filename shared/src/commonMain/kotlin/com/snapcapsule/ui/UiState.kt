@@ -17,6 +17,9 @@ object UiState {
     var editorVisible by mutableStateOf(false)
     var editingId by mutableStateOf<Long?>(null)
 
+    // 回收站条目只读查看（复用编辑抽屉的查看态）
+    var viewingId by mutableStateOf<Long?>(null)
+
     // 左滑展开互斥：同一时刻只允许一条胶囊处于左滑展开态，记录其 id（null=无展开）。
     var swipeOpenId by mutableStateOf<Long?>(null)
 

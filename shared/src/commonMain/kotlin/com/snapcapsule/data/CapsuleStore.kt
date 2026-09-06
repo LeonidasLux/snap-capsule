@@ -56,21 +56,30 @@ object CapsuleStore {
     // ── 变更 ─────────────────────────────────────────────
 
     fun add(text: String, cat: Cat, tags: List<String>) {
-        val c = Capsule(id = nextId(), text = text.trim(), cat = cat, tags = tags, createdAt = now())
+        val now = now()
+        val c = Capsule(id = nextId(), text = text.trim(), cat = cat, tags = tags, createdAt = now, updatedAt = now)
         listState = listOf(c) + listState
         persist()
     }
 
+    /** 编辑正文/分类/标签后保存：刷新 [Capsule.updatedAt]，不动完成时间。 */
     fun update(id: Long, text: String, cat: Cat, tags: List<String>) {
+        val now = now()
         listState = listState.map {
-            if (it.id == id) it.copy(text = text.trim(), cat = cat, tags = tags) else it
+            if (it.id == id) it.copy(text = text.trim(), cat = cat, tags = tags, updatedAt = now) else it
         }
         persist()
     }
 
-    /** 勾选/取消完成：未完成 → 已完成（进「已完成」Tab），反之亦然。 */
+    /**
+     * 勾选/取消完成：未完成 → 已完成（进「已完成」Tab，记完成时刻），反之亦然。
+     * 均刷新 [Capsule.updatedAt]；移回未完成时清空完成时间。
+     */
     fun setDone(id: Long, done: Boolean) {
-        listState = listState.map { if (it.id == id) it.copy(done = done) else it }
+        val now = now()
+        listState = listState.map {
+            if (it.id == id) it.copy(done = done, updatedAt = now, completedAt = if (done) now else null) else it
+        }
         persist()
     }
 
