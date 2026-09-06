@@ -14,7 +14,7 @@
 | JDK | Temurin 17，`JAVA_HOME=E:\Projects\github\kuikly_work\tools\jdk-17.0.20.1+1`（gradle daemon 用） |
 | 包 / Activity | `com.snapcapsule.app` / `com.snapcapsule.app.ShellActivity`（应用 id `com.snapcapsule.app`，versionName `0.1.0`） |
 | APK 产物 | `androidApp\build\outputs\apk\debug\androidApp-debug.apk` |
-| 运行数据 | app 私有目录 `files/capsules.json`（JSON schema v1） |
+| 运行数据 | app 私有目录 `files/capsules.json`（JSON schema v2） |
 
 命令示例在 **PowerShell** 下书写；`$ADB` 请先赋值：
 
@@ -100,7 +100,7 @@ $ADB = "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
 & $ADB shell run-as com.snapcapsule.app sh -c "cat /data/local/tmp/in.json > files/capsules.json"
 ```
 
-更省事的演示数据入口：**列表为空时**，进主页右上角 ⚙️ 设置 →「🧹 载入示例数据」，一次填入 50 条、时间横跨三年、含 5 条归档（JsonCodec.loadSample 生成），让各筛选视图都有内容。
+更省事的演示数据入口：**列表为空时**，进主页右上角 ⚙️ 设置 →「🧹 载入示例数据」，一次填入 50 条、时间横跨三年（未完成为主，含已完成与 3 条回收站，JsonCodec.loadSample 生成），让「未完成 / 已完成 / 回收站」都有内容。
 
 > ⚠️ 直接写文件注入的前提是先 `am force-stop` 再启动，否则进程内存态会盖回旧数据；
 > 用「设置 → 清空所有数据」清空后，再点「载入示例数据」即可，无需 adb 写盘。
@@ -123,7 +123,7 @@ $ADB = "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
 1. 改代码 → `.\gradlew.bat :androidApp:assembleDebug`
 2. `& $ADB install -r androidApp\build\outputs\apk\debug\androidApp-debug.apk`
 3. `& $ADB shell am force-stop com.snapcapsule.app`，再 `am start`
-4. 截图/点按验证；改的是渲染层判定（时间窗、层级、键盘）就用「清空 → 载入示例」喂数据复现。
+4. 截图/点按验证；改的是渲染层判定（完成态切换、层级、键盘等）就用「清空 → 载入示例」喂数据复现。
 
 ## 附：常见坑
 

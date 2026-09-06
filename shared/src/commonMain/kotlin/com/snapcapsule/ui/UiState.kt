@@ -17,9 +17,6 @@ object UiState {
     var editorVisible by mutableStateOf(false)
     var editingId by mutableStateOf<Long?>(null)
 
-    // 详情
-    var detailId by mutableStateOf<Long?>(null)
-
     // 左滑展开互斥：同一时刻只允许一条胶囊处于左滑展开态，记录其 id（null=无展开）。
     var swipeOpenId by mutableStateOf<Long?>(null)
 

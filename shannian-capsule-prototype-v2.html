@@ -1,0 +1,920 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>闪念胶囊 · MVP 原型 v2</title>
+<style>
+/* ─── tokens ───────────────────────────────────────────────────────── */
+:root {
+  --bg:      #F9F7F4;   /* 米白暖灰 */
+  --surface: #FFFFFF;   /* 纯白卡片 */
+  --fg:      #2A2620;   /* 暖黑正文 */
+  --muted:   #6E6A62;   /* 辅助灰 */
+  --border:  #ECE7DE;   /* 浅灰边线 */
+  --accent:  #95611C;   /* 低饱和琥珀 */
+  --work:    #5E6E8A;   /* 工作 · 蓝灰 */
+  --life:    #55704A;   /* 生活 · 鼠尾草绿 */
+  --danger:  #B44A36;   /* 删除 · 低饱和红 */
+  --stage:   #E9E4DA;   /* 原型画布背景 */
+  --bezel:   #1C1B19;   /* 手机边框 */
+  --on-accent: #FFFFFF; /* 强调色上的文字 */
+
+  --accent-soft: color-mix(in oklch, var(--accent) 14%, transparent);
+  --work-soft:   color-mix(in oklch, var(--work) 14%, transparent);
+  --life-soft:   color-mix(in oklch, var(--life) 14%, transparent);
+  --danger-soft: color-mix(in oklch, var(--danger) 14%, transparent);
+  --fg-soft:     color-mix(in oklch, var(--fg) 5%, transparent);
+  --chip:        color-mix(in oklch, var(--fg) 6%, var(--surface));
+
+  --font-display: 'Iowan Old Style','Songti SC','STSong','Noto Serif SC',Georgia,serif;
+  --font-body: -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans SC',sans-serif;
+  --font-mono: ui-monospace,'SF Mono','JetBrains Mono',Menlo,monospace;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--stage);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; cursor: pointer; color: inherit; background: none; border: 0; padding: 0; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+img, svg { display: block; }
+
+/* ─── 原型外壳 ─────────────────────────────────────────────────────── */
+.stage { min-height: 100vh; display: flex; flex-direction: column; }
+.proto-head {
+  position: sticky; top: 0; z-index: 50;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 14px 28px;
+  background: color-mix(in oklch, var(--stage) 88%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.proto-head .brand { font-family: var(--font-display); font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
+.proto-head .brand small { display: block; font-family: var(--font-mono); font-size: 11px; color: var(--muted); letter-spacing: 0.06em; }
+.proto-head .tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.tab {
+  padding: 7px 14px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--surface);
+  font-size: 13px; color: var(--muted); transition: all .15s ease;
+}
+.tab:hover { color: var(--fg); border-color: var(--fg); }
+.tab.active { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.tab.annot { background: var(--surface); }
+.tab.annot.on { background: var(--fg); border-color: var(--fg); color: var(--surface); }
+
+.proto-body {
+  flex: 1; display: flex; gap: 40px;
+  align-items: flex-start; justify-content: center;
+  padding: 40px 28px 56px;
+}
+.phone-wrap { flex: 0 0 auto; }
+
+/* 手机框 */
+.phone {
+  width: 390px; max-width: calc(100vw - 28px);
+  aspect-ratio: 390 / 812; height: auto;
+  border-radius: 48px;
+  background: var(--bezel);
+  border: 10px solid var(--bezel);
+  box-shadow: 0 30px 60px rgba(0,0,0,.22), 0 6px 18px rgba(0,0,0,.12);
+  overflow: hidden;
+  position: relative;
+}
+.screen {
+  position: relative; width: 100%; height: 100%;
+  background: var(--bg);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+
+/* 状态栏 */
+.statusbar {
+  flex: 0 0 auto; height: 46px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 22px; font-family: var(--font-mono); font-size: 12px; font-weight: 600;
+}
+.statusbar .sb-icons { display: flex; gap: 6px; align-items: center; }
+.statusbar svg { width: 15px; height: 15px; }
+
+/* 顶部导航 */
+.appnav {
+  flex: 0 0 auto; height: 54px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 20px;
+}
+.appnav .app-logo { font-family: var(--font-display); font-size: 20px; font-weight: 600; letter-spacing: 0.02em; }
+.appnav .app-actions { display: flex; gap: 4px; align-items: center; }
+.iconbtn {
+  width: 38px; height: 38px; border-radius: 12px;
+  display: grid; place-items: center; color: var(--fg);
+  transition: background .15s ease;
+}
+.iconbtn:hover { background: var(--fg-soft); }
+.iconbtn svg { width: 20px; height: 20px; }
+
+/* 筛选器 */
+.filters {
+  flex: 0 0 auto; height: 50px;
+  display: flex; align-items: stretch;
+  padding: 0 20px; gap: 4px;
+}
+.filters .fbtn {
+  flex: 1; position: relative; display: grid; place-items: center;
+  font-size: 15px; color: var(--muted); font-weight: 500;
+  transition: color .15s ease;
+}
+.filters .fbtn::after {
+  content: ''; position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%);
+  width: 5px; height: 5px; border-radius: 50%; background: var(--accent);
+  opacity: 0; transition: opacity .15s ease;
+}
+.filters .fbtn.on { color: var(--fg); font-weight: 600; }
+.filters .fbtn.on::after { opacity: 1; }
+
+/* 列表 */
+.listwrap { flex: 1 1 auto; overflow-y: auto; padding: 4px 20px 120px; scrollbar-width: none; }
+.listwrap::-webkit-scrollbar { display: none; }
+.hint {
+  display: flex; align-items: center; gap: 8px; justify-content: center;
+  font-size: 12px; color: var(--muted); margin-bottom: 10px;
+}
+.hint svg { width: 14px; height: 14px; }
+.hint .hint-x { cursor: pointer; opacity: .6; }
+
+/* 胶囊卡片 */
+.swipe { position: relative; border-radius: 14px; margin-bottom: 12px; overflow: hidden; }
+.swipe-actions {
+  position: absolute; top: 0; bottom: 0; right: 0;
+  display: flex; align-items: stretch; width: 160px;
+}
+.swipe-actions button {
+  width: 80px; color: var(--on-accent); font-size: 14px; font-weight: 600;
+  display: grid; place-items: center; line-height: 1.2; padding: 0 6px;
+}
+.swipe-actions button:hover { filter: brightness(1.06); }
+.swipe-actions .act-done { background: var(--life); }
+.swipe-actions .act-delete { background: var(--danger); }
+.capsule {
+  position: relative; z-index: 1;
+  background: var(--surface); border-radius: 14px;
+  padding: 14px 16px 12px 18px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 8px 12px rgba(0,0,0,.05);
+  cursor: pointer; touch-action: pan-y;
+  transition: transform .18s ease;
+}
+.capsule::before {
+  content: ''; position: absolute; left: 0; top: 12px; bottom: 12px;
+  width: 3px; border-radius: 2px; background: var(--cat, var(--muted));
+}
+.capsule .body {
+  font-size: 15px; line-height: 1.6; color: var(--fg);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.capsule.done::before { background: var(--chip); }
+.capsule.done .body { color: var(--muted); }
+.capsule .foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
+.tags { display: flex; gap: 6px; flex-wrap: wrap; }
+.tagchip {
+  height: 24px; display: inline-flex; align-items: center;
+  padding: 0 10px; border-radius: 12px;
+  background: var(--chip); color: var(--muted); font-size: 12px;
+}
+.time { flex: 0 0 auto; font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+
+/* 空状态 */
+.empty { flex: 1 1 auto; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding-bottom: 80px; }
+.empty.show { display: flex; }
+.empty .bulb {
+  width: 84px; height: 84px; border-radius: 50%;
+  background: var(--fg-soft); color: var(--muted);
+  display: grid; place-items: center;
+}
+.empty .bulb svg { width: 40px; height: 40px; }
+.empty .line { font-family: var(--font-display); font-size: 20px; color: var(--muted); letter-spacing: 0.02em; }
+
+/* FAB */
+.fab {
+  position: absolute; left: 50%; bottom: 30px; transform: translateX(-50%);
+  width: 56px; height: 56px; border-radius: 50%;
+  background: var(--accent); color: var(--on-accent);
+  box-shadow: 0 10px 22px color-mix(in oklch, var(--accent) 40%, transparent), 0 2px 6px rgba(0,0,0,.12);
+  display: grid; place-items: center; z-index: 12;
+  transition: transform .12s ease, background .15s ease;
+}
+.fab:hover { background: color-mix(in oklch, var(--accent) 88%, black); }
+.fab:active { transform: translateX(-50%) scale(.94); }
+.fab svg { width: 26px; height: 26px; stroke-width: 2.2; }
+
+/* 遮罩 */
+.scrim {
+  position: absolute; inset: 0; z-index: 26;
+  background: rgba(0,0,0,.28);
+  opacity: 0; pointer-events: none; transition: opacity .22s ease;
+}
+.scrim.show { opacity: 1; pointer-events: auto; }
+
+/* 底部抽屉（查看+编辑 / 新建） */
+.sheet {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 30;
+  background: var(--surface);
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -12px 32px rgba(0,0,0,.14);
+  transform: translateY(102%);
+  transition: transform .28s cubic-bezier(.32,.72,.28,1);
+  display: flex; flex-direction: column;
+  padding: 14px 20px 22px;
+}
+.sheet.show { transform: translateY(0); }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.sheet-head .grip { width: 36px; height: 4px; border-radius: 2px; background: var(--border); position: absolute; top: 8px; left: 50%; transform: translateX(-50%); }
+.sheet-head .s-title { font-family: var(--font-display); font-size: 18px; font-weight: 600; }
+.save-btn { color: var(--accent); font-size: 15px; font-weight: 600; padding: 6px 8px; }
+.save-btn:hover { opacity: .8; }
+
+.ta {
+  width: 100%; height: 240px; border: 0; resize: none; outline: none;
+  background: transparent; color: var(--fg);
+  font: inherit; font-size: 16px; line-height: 1.6;
+  padding: 10px 2px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.ta::placeholder { color: color-mix(in oklch, var(--muted) 70%, transparent); }
+
+.cat-row { display: flex; gap: 10px; margin-top: 16px; }
+.cat-btn {
+  flex: 1; height: 46px; border-radius: 12px;
+  border: 1px solid var(--border); background: var(--surface);
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  font-size: 15px; color: var(--muted); font-weight: 500;
+  transition: all .15s ease;
+}
+.cat-btn span { font-size: 16px; }
+.cat-btn.on.work { background: var(--work-soft); border-color: var(--work); color: var(--work); font-weight: 600; }
+.cat-btn.on.life { background: var(--life-soft); border-color: var(--life); color: var(--life); font-weight: 600; }
+
+.tag-input { display: flex; align-items: center; gap: 4px; margin-top: 14px; }
+.tag-input .hash { color: var(--accent); font-family: var(--font-mono); font-weight: 600; }
+.tag-input input {
+  flex: 1; border: 0; outline: none; background: transparent;
+  font: inherit; font-size: 14px; color: var(--fg); padding: 8px 0;
+}
+.tag-input input::placeholder { color: color-mix(in oklch, var(--muted) 60%, transparent); }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; min-height: 24px; }
+.chips .tagchip { background: var(--accent-soft); color: var(--accent); }
+.chips .tagchip b { font-weight: 500; margin-left: 5px; cursor: pointer; }
+.sheet-foot { margin-top: 12px; display: flex; align-items: center; justify-content: space-between; }
+.cancel-link { color: var(--muted); font-size: 14px; }
+.cancel-link:hover { color: var(--fg); }
+.cancel-link.danger { color: var(--danger); }
+.cancel-link.danger:hover { color: color-mix(in oklch, var(--danger) 80%, black); }
+
+/* 确认对话框 */
+.confirm {
+  position: absolute; left: 24px; right: 24px; top: 50%; z-index: 40;
+  transform: translateY(-50%) scale(.96);
+  background: var(--surface); border-radius: 18px;
+  box-shadow: 0 24px 48px rgba(0,0,0,.2);
+  padding: 22px 20px 14px; text-align: center;
+  opacity: 0; pointer-events: none; transition: all .18s ease;
+}
+.confirm.show { opacity: 1; pointer-events: auto; transform: translateY(-50%) scale(1); }
+.confirm .c-title { font-size: 16px; font-weight: 600; }
+.confirm .c-sub { font-size: 13px; color: var(--muted); margin: 6px 0 18px; }
+.confirm .c-row { display: flex; gap: 10px; }
+.confirm button { flex: 1; height: 44px; border-radius: 12px; font-size: 15px; }
+.c-cancel { background: var(--fg-soft); color: var(--fg); }
+.c-del { background: var(--danger); color: var(--on-accent); }
+
+/* 导入弹窗 */
+.import-dialog {
+  position: absolute; left: 24px; right: 24px; top: 50%; z-index: 40;
+  transform: translateY(-50%) scale(.96);
+  background: var(--surface); border-radius: 18px;
+  box-shadow: 0 24px 48px rgba(0,0,0,.2);
+  padding: 22px 20px; text-align: center;
+  opacity: 0; pointer-events: none; transition: all .18s ease;
+}
+.import-dialog.show { opacity: 1; pointer-events: auto; transform: translateY(-50%) scale(1); }
+.import-dialog .c-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+.import-dialog .c-sub { font-size: 13px; color: var(--muted); margin-bottom: 18px; }
+.file-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 46px; padding: 0 18px; border-radius: 12px;
+  border: 1px dashed var(--accent); color: var(--accent); font-size: 14px; font-weight: 500;
+}
+.file-btn:hover { background: var(--accent-soft); }
+.demo-wrong { display: block; margin: 14px auto 0; font-size: 12px; color: var(--muted); text-decoration: underline; }
+.demo-wrong:hover { color: var(--fg); }
+
+/* 设置页 / 回收站（整页侧滑入） */
+.settings {
+  position: absolute; inset: 0; z-index: 25;
+  background: var(--bg); display: flex; flex-direction: column;
+  transform: translateX(100%); transition: transform .26s cubic-bezier(.32,.72,.28,1);
+}
+.settings.show { transform: translateX(0); }
+.settings .st-nav { height: 54px; display: flex; align-items: center; gap: 10px; padding: 0 12px; }
+.settings .st-title { font-family: var(--font-display); font-size: 18px; font-weight: 600; }
+.st-list { flex: 1; padding: 6px 20px; overflow-y: auto; scrollbar-width: none; }
+.st-list::-webkit-scrollbar { display: none; }
+.st-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 2px; border-bottom: 1px solid var(--border); width: 100%; font-size: 15px;
+}
+.st-item .st-left { display: flex; align-items: center; gap: 12px; }
+.st-item svg { width: 20px; height: 20px; color: var(--muted); }
+.st-item .st-right { color: var(--muted); font-size: 14px; display: flex; align-items: center; gap: 6px; }
+.st-item.static { cursor: default; }
+
+/* 回收站条目 */
+.trash-item {
+  background: var(--surface); border-radius: 14px;
+  padding: 13px 15px; margin-bottom: 12px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 8px 12px rgba(0,0,0,.05);
+}
+.trash-item .ti-body { font-size: 14px; line-height: 1.55; color: var(--fg); }
+.trash-item .ti-meta { font-size: 12px; color: var(--muted); margin: 8px 0 12px; font-family: var(--font-mono); }
+.trash-item .ti-actions { display: flex; gap: 8px; }
+.trash-item button { height: 36px; border-radius: 10px; font-size: 13px; padding: 0 14px; }
+.ti-restore { background: var(--fg-soft); color: var(--fg); }
+.ti-restore:hover { background: var(--chip); }
+.ti-purge { background: var(--danger-soft); color: var(--danger); }
+.ti-purge:hover { background: color-mix(in oklch, var(--danger) 18%, transparent); }
+.trash-empty { flex: 1; display: none; align-items: center; justify-content: center; color: var(--muted); }
+.trash-empty.show { display: flex; }
+
+/* Toast */
+.toast {
+  position: absolute; left: 50%; bottom: 108px; z-index: 45;
+  transform: translateX(-50%) translateY(16px);
+  background: var(--fg); color: var(--surface);
+  border-radius: 12px; padding: 11px 18px; font-size: 13px;
+  box-shadow: 0 12px 28px rgba(0,0,0,.2);
+  opacity: 0; pointer-events: none; transition: all .22s ease;
+  white-space: nowrap; max-width: 88%;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* 手势标注层 */
+.annot {
+  position: absolute; z-index: 15; pointer-events: none;
+  display: none; font-family: var(--font-mono);
+}
+.annot-on .annot { display: block; }
+.annot .box {
+  position: relative; border: 1.5px dashed color-mix(in oklch, var(--accent) 70%, transparent);
+  border-radius: 8px; min-width: 90px; padding: 4px 8px;
+  font-size: 11px; color: var(--accent); background: color-mix(in oklch, var(--surface) 82%, transparent);
+}
+.annot .box.danger { border-color: color-mix(in oklch, var(--danger) 70%, transparent); color: var(--danger); }
+.annot .box.life { border-color: color-mix(in oklch, var(--life) 70%, transparent); color: var(--life); }
+.annot-a { top: 198px; left: 2px; }
+.annot-d { top: 320px; left: 2px; }
+
+/* 侧栏标注面板 */
+.legend { flex: 0 0 300px; max-width: 340px; }
+.legend h3 { font-family: var(--font-display); font-size: 16px; margin: 0 0 12px; }
+.legend .group { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px 18px; margin-bottom: 14px; }
+.legend .group h4 { margin: 0 0 10px; font-size: 13px; color: var(--muted); font-weight: 600; letter-spacing: .02em; }
+.legend .spec { display: flex; justify-content: space-between; align-items: baseline; padding: 5px 0; font-size: 13px; }
+.legend .spec .k { color: var(--muted); }
+.legend .spec .v { font-family: var(--font-mono); font-size: 12px; }
+.legend .gest { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 13px; }
+.legend .gest .sw { width: 34px; height: 22px; border-radius: 6px; border: 1px solid var(--border); position: relative; flex: 0 0 auto; overflow: hidden; }
+.legend .gest .sw::after { content: ''; position: absolute; inset: 3px 6px; border-radius: 4px; background: var(--fg-soft); }
+.legend .gest .sw.l::after { right: 3px; }
+.legend .gest .sw.l { background: var(--danger-soft); }
+.legend .gest .sw.done { background: var(--life-soft); }
+.swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+.swatches .sw-i { width: 26px; height: 26px; border-radius: 8px; border: 1px solid var(--border); }
+.swatches .sw-i.bg { background: var(--bg); }
+.swatches .sw-i.sf { background: var(--surface); }
+.swatches .sw-i.ac { background: var(--accent); }
+.swatches .sw-i.wk { background: var(--work); }
+.swatches .sw-i.lf { background: var(--life); }
+.swatches .sw-i.dg { background: var(--danger); }
+
+@media (max-width: 920px) {
+  .proto-body { flex-direction: column; align-items: center; padding: 24px 12px 48px; }
+  .legend { flex: none; width: 100%; max-width: 390px; }
+  .proto-head { padding: 12px 16px; }
+}
+</style>
+</head>
+<body>
+<div class="stage">
+  <header class="proto-head" data-od-id="proto-header">
+    <div class="brand">闪念胶囊 · MVP 原型 v2<small>SHAN NIAN CAPSULE — 未完成/已完成 + 回收站</small></div>
+    <div class="tools">
+      <button class="tab active" data-screen="home">主页</button>
+      <button class="tab" data-screen="settings">设置</button>
+      <button class="tab annot" id="annotToggle" title="显示/隐藏尺寸与手势标注">标注</button>
+    </div>
+  </header>
+
+  <div class="proto-body">
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="screen" id="screen">
+
+          <!-- 状态栏 -->
+          <div class="statusbar">
+            <span>9:41</span>
+            <span class="sb-icons">
+              <svg viewBox="0 0 16 12" fill="currentColor" stroke="none"><rect x="0" y="7" width="3" height="5" rx="1"/><rect x="4.5" y="4.5" width="3" height="7.5" rx="1"/><rect x="9" y="2" width="3" height="10" rx="1"/><rect x="13.5" y="0" width="3" height="12" rx="1" opacity=".3"/></svg>
+              <svg viewBox="0 0 16 12"><path d="M8 9.5a1.6 1.6 0 100-3.2 1.6 1.6 0 000 3.2zM4.3 6.2a5 5 0 017.4 0M1.7 3.8a8.6 8.6 0 0112.6 0" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+              <svg viewBox="0 0 24 12"><rect x="1" y="1" width="18" height="10" rx="3" fill="none" stroke="currentColor" stroke-width="1.4"/><rect x="3" y="3" width="12" height="6" rx="1.5" fill="currentColor" stroke="none"/><rect x="20.5" y="4" width="2.5" height="4" rx="1" fill="currentColor" stroke="none"/></svg>
+            </span>
+          </div>
+
+          <!-- 顶部导航：设置 + 回收站 -->
+          <div class="appnav" data-od-id="topnav">
+            <span class="app-logo">闪念胶囊</span>
+            <div class="app-actions">
+              <button class="iconbtn" id="trashBtn" aria-label="回收站">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/><path d="M10 11v6M14 11v6"/></svg>
+              </button>
+              <button class="iconbtn" id="openSettings" aria-label="设置与数据管理">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 00.34 1.87l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.7 1.7 0 00-1.87-.34 1.7 1.7 0 00-1 1.55V21a2 2 0 11-4 0v-.09a1.7 1.7 0 00-1-1.55 1.7 1.7 0 00-1.87.34l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.7 1.7 0 00.34-1.87 1.7 1.7 0 00-1.55-1H3a2 2 0 110-4h.09a1.7 1.7 0 001.55-1 1.7 1.7 0 00-.34-1.87l-.06-.06a2 2 0 112.83-2.83l.06.06a1.7 1.7 0 001.87.34h0a1.7 1.7 0 001-1.55V3a2 2 0 114 0v.09a1.7 1.7 0 001 1.55h0a1.7 1.7 0 001.87-.34l.06-.06a2 2 0 112.83 2.83l-.06.06a1.7 1.7 0 00-.34 1.87v0a1.7 1.7 0 001.55 1H21a2 2 0 110 4h-.09a1.7 1.7 0 00-1.55 1z"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- 筛选器：未完成 / 已完成 -->
+          <div class="filters" data-od-id="filters">
+            <button class="fbtn on" data-filter="todo">未完成</button>
+            <button class="fbtn" data-filter="done">已完成</button>
+          </div>
+
+          <!-- 列表 + 空状态 -->
+          <div class="listwrap" id="listwrap" data-od-id="capsule-list"></div>
+          <div class="empty" id="empty" data-od-id="empty-state">
+            <div class="bulb">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 00-3.6 10.8c.6.5 1 1.3 1 2.2h5.2c0-.9.4-1.7 1-2.2A6 6 0 0012 3z"/></svg>
+            </div>
+            <div class="line" id="emptyLine">此刻大脑很干净</div>
+          </div>
+
+          <!-- FAB -->
+          <button class="fab" id="fab" data-od-id="fab" aria-label="新建胶囊">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+
+          <!-- 手势标注层 -->
+          <div class="annot annot-a"><div class="box">左滑 → 完成 / 删除</div></div>
+          <div class="annot annot-d"><div class="box">点击 → 详情 / 编辑</div></div>
+
+          <!-- 遮罩 -->
+          <div class="scrim" id="scrim"></div>
+
+          <!-- 底部抽屉（新建 / 查看详情并编辑） -->
+          <div class="sheet" id="sheet" data-od-id="edit-sheet">
+            <div class="grip"></div>
+            <div class="sheet-head">
+              <span class="s-title" id="sheetTitle">新建胶囊</span>
+              <button class="save-btn" id="saveBtn">保存</button>
+            </div>
+            <textarea class="ta" id="ta" placeholder="记个闪念... 加 #标签 可分类"></textarea>
+            <div class="cat-row" id="catRow">
+              <button class="cat-btn life on" data-cat="life"><span>☕</span>生活</button>
+              <button class="cat-btn work" data-cat="work"><span>💼</span>工作</button>
+            </div>
+            <div class="tag-input">
+              <span class="hash">#</span>
+              <input id="tagInput" placeholder="输入标签后按回车" />
+            </div>
+            <div class="chips" id="chips"></div>
+            <div class="sheet-foot">
+              <button class="cancel-link danger" id="delBtn" style="display:none">删除此条</button>
+              <button class="cancel-link" id="cancelBtn">取消</button>
+            </div>
+          </div>
+
+          <!-- 确认删除 -->
+          <div class="confirm" id="confirm">
+            <div class="c-title">彻底删除这条？</div>
+            <div class="c-sub">删除后将无法恢复</div>
+            <div class="c-row">
+              <button class="c-cancel" id="confirmCancel">取消</button>
+              <button class="c-del" id="confirmOk">删除</button>
+            </div>
+          </div>
+
+          <!-- 导入弹窗 -->
+          <div class="import-dialog" id="importDialog">
+            <div class="c-title">导入数据</div>
+            <div class="c-sub">选择 .json 文件</div>
+            <button class="file-btn" id="fileBtn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+              选择 .json 文件
+            </button>
+            <button class="demo-wrong" id="demoWrong">演示：导入错误格式 → 触发 Toast</button>
+          </div>
+
+          <!-- 设置页 -->
+          <div class="settings" id="settings" data-od-id="settings-page">
+            <div class="st-nav">
+              <button class="iconbtn" id="backHome" aria-label="返回">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+              </button>
+              <span class="st-title">设置与数据管理</span>
+            </div>
+            <div class="st-list">
+              <button class="st-item" id="exportBtn">
+                <span class="st-left">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                  导出数据
+                </span>
+                <span class="st-right">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                </span>
+              </button>
+              <button class="st-item" id="importBtn">
+                <span class="st-left">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+                  导入数据
+                </span>
+                <span class="st-right">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+                </span>
+              </button>
+              <div class="st-item static">
+                <span class="st-left">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+                  数据总量
+                </span>
+                <span class="st-right" id="totalCount">共 0 条</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 回收站 -->
+          <div class="settings" id="trash" data-od-id="trash-page">
+            <div class="st-nav">
+              <button class="iconbtn" id="backTrash" aria-label="返回">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+              </button>
+              <span class="st-title">回收站</span>
+            </div>
+            <div class="st-list" id="trashList"></div>
+            <div class="trash-empty" id="trashEmpty">回收站是空的</div>
+          </div>
+
+          <!-- Toast -->
+          <div class="toast" id="toast"></div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="legend" data-od-id="legend">
+      <h3>设计标注</h3>
+      <div class="group">
+        <h4>交互手势</h4>
+        <div class="gest"><span class="sw done"></span>点击卡片 → 底部抽屉查看/编辑</div>
+        <div class="gest"><span class="sw l"></span>左滑 → 完成（绿）/ 删除（红）</div>
+        <div class="gest"><span class="sw done"></span>顶栏 设置 + 回收站 图标</div>
+        <div class="gest"><span class="sw done"></span>点击 ＋ → 新建胶囊</div>
+      </div>
+      <div class="group">
+        <h4>尺寸 / 像素</h4>
+        <div class="spec"><span class="k">列表内边距</span><span class="v">左右 20px · 间距 12px</span></div>
+        <div class="spec"><span class="k">FAB</span><span class="v">直径 56px · 距底部 30px</span></div>
+        <div class="spec"><span class="k">左滑动作条</span><span class="v">160px · 完成/删除 各 80px</span></div>
+        <div class="spec"><span class="k">弹窗圆角</span><span class="v">顶部 20px · 底部直角</span></div>
+        <div class="spec"><span class="k">卡片</span><span class="v">白底 · 圆角 14 · 阴影 8-12px</span></div>
+      </div>
+      <div class="group">
+        <h4>状态</h4>
+        <div class="spec"><span class="k">筛选</span><span class="v">未完成 / 已完成</span></div>
+        <div class="spec"><span class="k">空状态</span><span class="v">「此刻大脑很干净」</span></div>
+        <div class="spec"><span class="k">删除去向</span><span class="v">回收站 · 可恢复</span></div>
+      </div>
+      <div class="group">
+        <h4>色彩</h4>
+        <div class="swatches">
+          <div class="sw-i bg" title="背景 #F9F7F4"></div>
+          <div class="sw-i sf" title="卡片 #FFFFFF"></div>
+          <div class="sw-i ac" title="主色 · 琥珀"></div>
+          <div class="sw-i wk" title="工作 · 蓝灰"></div>
+          <div class="sw-i lf" title="生活 · 鼠尾草绿"></div>
+          <div class="sw-i dg" title="删除 · 低饱和红"></div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ─── 数据 ─────────────────────────────────────────────────────── */
+  const SEED = [
+    { text: '整理下周产品评审会的待办清单，把用户反馈里的高频问题一并带上', cat: 'work', tags: ['工作', '会议'], time: '昨天 18:42', done: false, deleted: false },
+    { text: '周末想去城西新开的书店，听说有很好喝的燕麦拿铁', cat: 'life', tags: ['生活'], time: '3天前', done: false, deleted: false },
+    { text: '和设计团队确认新版配色，主色调倾向低饱和琥珀，避免大红大蓝', cat: 'work', tags: ['设计', '配色'], time: '上周二', done: false, deleted: false },
+    { text: '给妈妈打个电话，问问她最近的血压情况', cat: 'life', tags: ['家庭'], time: '上周五', done: true, deleted: false },
+    { text: '研究竞品的归档交互，我们的左滑完成/删除可以借鉴', cat: 'work', tags: ['调研'], time: '2周前', done: false, deleted: false }
+  ];
+  let capsules = SEED.map((c, i) => ({ id: i + 1, ...c }));
+  let nextId = capsules.length + 1;
+  let filter = 'todo';
+  let currentCat = 'life';
+  let editingId = null;
+
+  const $ = (id) => document.getElementById(id);
+  const listwrap = $('listwrap'), empty = $('empty'), screen = $('screen');
+
+  /* ─── 工具 ─────────────────────────────────────────────────────── */
+  function esc(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function truncate(s, n) { return s.length > n ? s.slice(0, n) + '…' : s; }
+  function toast(msg) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._t);
+    t._t = setTimeout(() => t.classList.remove('show'), 2400);
+  }
+  const CAT_EMOJI = { work: '💼', life: '☕' };
+  const CAT_NAME = { work: '工作', life: '生活' };
+
+  /* ─── 渲染列表 ─────────────────────────────────────────────────── */
+  function visible() {
+    const active = capsules.filter(c => !c.deleted);
+    if (filter === 'done') return active.filter(c => c.done);
+    return active.filter(c => !c.done);
+  }
+  function render() {
+    const list = visible();
+    listwrap.innerHTML = '';
+    if (list.length === 0) {
+      listwrap.style.display = 'none';
+      $('emptyLine').textContent = filter === 'done' ? '已完成里空空的' : '此刻大脑很干净';
+      empty.classList.add('show');
+      return;
+    }
+    listwrap.style.display = '';
+    empty.classList.remove('show');
+
+    const hint = document.createElement('div');
+    hint.className = 'hint';
+    hint.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 8v4l2.5 2.5"/><circle cx="12" cy="12" r="9"/></svg><span>点击查看 · 左滑完成/删除</span><span class="hint-x">✕</span>';
+    hint.querySelector('.hint-x').onclick = () => hint.remove();
+    listwrap.appendChild(hint);
+
+    list.forEach(c => {
+      const wrap = document.createElement('div');
+      wrap.className = 'swipe';
+      const doneLabel = c.done ? '未完成' : '完成';
+      wrap.innerHTML = `
+        <div class="swipe-actions">
+          <button class="act-done" data-act="done">${doneLabel}</button>
+          <button class="act-delete" data-act="delete">删除</button>
+        </div>
+        <article class="capsule ${c.done ? 'done' : ''}" data-id="${c.id}">
+          <div class="body">${esc(truncate(c.text, 34))}</div>
+          <div class="foot">
+            <div class="tags">${c.tags.map(t => `<span class="tagchip">#${esc(t)}</span>`).join('')}</div>
+            <span class="time">${c.time}</span>
+          </div>
+        </article>`;
+      const card = wrap.querySelector('.capsule');
+      card.style.setProperty('--cat', c.cat === 'work' ? 'var(--work)' : 'var(--life)');
+      wrap.querySelector('.act-done').onclick = (e) => { e.stopPropagation(); toggleDone(c.id); };
+      wrap.querySelector('.act-delete').onclick = (e) => { e.stopPropagation(); trash(c.id); };
+      listwrap.appendChild(wrap);
+    });
+  }
+
+  /* ─── 筛选 ─────────────────────────────────────────────────────── */
+  document.querySelectorAll('.fbtn').forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll('.fbtn').forEach(b => b.classList.remove('on'));
+      btn.classList.add('on');
+      filter = btn.dataset.filter;
+      closeAllSwipe();
+      render();
+    };
+  });
+
+  /* ─── 底部抽屉（新建 / 查看并编辑） ────────────────────────────── */
+  const sheet = $('sheet'), scrim = $('scrim'), ta = $('ta'), chipsEl = $('chips');
+  let draftTags = [];
+
+  function renderChips() {
+    chipsEl.innerHTML = draftTags.map(t => `<span class="tagchip">#${t}<b data-t="${t}">×</b></span>`).join('');
+    chipsEl.querySelectorAll('b').forEach(b => b.onclick = () => {
+      draftTags = draftTags.filter(t => t !== b.dataset.t);
+      renderChips();
+    });
+  }
+  function openSheet(mode, data) {
+    editingId = mode === 'edit' ? data.id : null;
+    $('sheetTitle').textContent = mode === 'edit' ? '编辑胶囊' : '新建胶囊';
+    $('delBtn').style.display = mode === 'edit' ? '' : 'none';
+    ta.value = data ? data.text : '';
+    currentCat = data ? data.cat : 'life';
+    draftTags = data ? [...data.tags] : [];
+    setCat(currentCat);
+    renderChips();
+    sheet.classList.add('show');
+    scrim.classList.add('show');
+    setTimeout(() => ta.focus(), 280);
+  }
+  function closeSheet() {
+    sheet.classList.remove('show');
+    scrim.classList.remove('show');
+    ta.value = '';
+    draftTags = [];
+    renderChips();
+    editingId = null;
+  }
+  function setCat(cat) {
+    currentCat = cat;
+    document.querySelectorAll('#catRow .cat-btn').forEach(b => {
+      b.classList.toggle('on', b.dataset.cat === cat);
+    });
+  }
+  function saveCapsule() {
+    const text = ta.value.trim();
+    if (!text) { toast('先记点什么吧'); return; }
+    const tags = draftTags.length ? draftTags : (currentCat === 'work' ? ['工作'] : ['生活']);
+    if (editingId) {
+      const c = capsules.find(x => x.id === editingId);
+      if (c) { c.text = text; c.cat = currentCat; c.tags = tags; }
+      toast('已更新');
+    } else {
+      capsules.unshift({ id: nextId++, text, cat: currentCat, tags, time: '刚刚', done: false, deleted: false });
+      toast('已保存');
+    }
+    closeSheet();
+    render();
+  }
+  $('fab').onclick = () => openSheet('new');
+  $('saveBtn').onclick = saveCapsule;
+  $('cancelBtn').onclick = closeSheet;
+  $('delBtn').onclick = () => { const id = editingId; if (id != null) { closeSheet(); trash(id); } };
+  scrim.onclick = () => { closeSheet(); importDialog.classList.remove('show'); confirmClose(); };
+  document.querySelectorAll('#catRow .cat-btn').forEach(b => b.onclick = () => setCat(b.dataset.cat));
+  $('tagInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === '，' || e.key === ',') {
+      e.preventDefault();
+      const v = e.target.value.trim().replace(/^#/, '');
+      if (v && !draftTags.includes(v)) { draftTags.push(v); renderChips(); }
+      e.target.value = '';
+    }
+  });
+
+  /* ─── 完成 / 删除 ──────────────────────────────────────────────── */
+  const confirmBox = $('confirm');
+  let confirmCb = null;
+  function showConfirm(title, sub, okLabel, cb) {
+    confirmBox.querySelector('.c-title').textContent = title;
+    confirmBox.querySelector('.c-sub').textContent = sub;
+    confirmBox.querySelector('.c-del').textContent = okLabel;
+    confirmCb = cb;
+    confirmBox.classList.add('show');
+    scrim.classList.add('show');
+  }
+  function confirmClose() {
+    confirmBox.classList.remove('show');
+    scrim.classList.remove('show');
+    confirmCb = null;
+  }
+  $('confirmCancel').onclick = confirmClose;
+  $('confirmOk').onclick = () => { const cb = confirmCb; confirmClose(); if (cb) cb(); };
+  function toggleDone(id) {
+    const c = capsules.find(x => x.id === id);
+    if (!c) return;
+    c.done = !c.done;
+    closeAllSwipe();
+    render();
+    toast(c.done ? '已标记完成' : '已移回未完成');
+  }
+  function trash(id) {
+    const c = capsules.find(x => x.id === id);
+    if (!c) return;
+    c.deleted = true;
+    closeAllSwipe();
+    render();
+    toast('已移入回收站');
+  }
+  function closeAllSwipe() {
+    document.querySelectorAll('.capsule').forEach(c => { c.style.transform = 'translateX(0)'; });
+  }
+
+  /* ─── 卡片手势：点击 / 左滑 ────────────────────────────────────── */
+  let drag = null;
+  listwrap.addEventListener('pointerdown', (e) => {
+    const card = e.target.closest('.capsule');
+    if (!card) { closeAllSwipe(); return; }
+    const id = +card.dataset.id;
+    drag = { id, startX: e.clientX, startY: e.clientY, dx: 0, moved: false, card };
+  });
+  window.addEventListener('pointermove', (e) => {
+    if (!drag) return;
+    const dx = e.clientX - drag.startX, dy = e.clientY - drag.startY;
+    if (Math.abs(dx) > 6 || Math.abs(dy) > 6) drag.moved = true;
+    drag.dx = Math.max(-160, Math.min(160, dx));
+    drag.card.style.transition = 'none';
+    drag.card.style.transform = `translateX(${drag.dx}px)`;
+  });
+  window.addEventListener('pointerup', () => {
+    if (!drag) return;
+    const { id, dx, moved, card } = drag;
+    card.style.transition = '';
+    if (dx <= -60) {
+      card.style.transform = 'translateX(-160px)';
+    } else {
+      card.style.transform = 'translateX(0)';
+      if (!moved) { const c = capsules.find(x => x.id === id); if (c) openSheet('edit', c); }
+    }
+    drag = null;
+  });
+
+  /* ─── 设置页 ───────────────────────────────────────────────────── */
+  const settings = $('settings');
+  $('openSettings').onclick = () => settings.classList.add('show');
+  $('backHome').onclick = () => settings.classList.remove('show');
+  document.querySelectorAll('.proto-head .tab[data-screen]').forEach(t => {
+    t.onclick = () => {
+      document.querySelectorAll('.tab[data-screen]').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      if (t.dataset.screen === 'settings') settings.classList.add('show');
+      else settings.classList.remove('show');
+    };
+  });
+
+  /* ─── 回收站 ───────────────────────────────────────────────────── */
+  const trashPage = $('trash');
+  function renderTrash() {
+    const items = capsules.filter(c => c.deleted);
+    const list = $('trashList');
+    list.innerHTML = '';
+    if (items.length === 0) {
+      list.style.display = 'none';
+      $('trashEmpty').classList.add('show');
+      return;
+    }
+    list.style.display = '';
+    $('trashEmpty').classList.remove('show');
+    items.forEach(c => {
+      const el = document.createElement('div');
+      el.className = 'trash-item';
+      el.innerHTML = `
+        <div class="ti-body">${esc(c.text)}</div>
+        <div class="ti-meta">${CAT_EMOJI[c.cat]} ${CAT_NAME[c.cat]} · ${c.time}</div>
+        <div class="ti-actions">
+          <button class="ti-restore" data-id="${c.id}">恢复</button>
+          <button class="ti-purge" data-id="${c.id}">彻底删除</button>
+        </div>`;
+      el.querySelector('.ti-restore').onclick = () => {
+        const it = capsules.find(x => x.id === c.id);
+        if (it) { it.deleted = false; renderTrash(); render(); toast('已恢复'); }
+      };
+      el.querySelector('.ti-purge').onclick = () => {
+        showConfirm('彻底删除这条？', '删除后将无法恢复', '彻底删除', () => {
+          capsules = capsules.filter(x => x.id !== c.id);
+          renderTrash(); render(); toast('已彻底删除');
+        });
+      };
+      list.appendChild(el);
+    });
+  }
+  $('trashBtn').onclick = () => { renderTrash(); trashPage.classList.add('show'); };
+  $('backTrash').onclick = () => trashPage.classList.remove('show');
+
+  /* ─── 数据管理 ─────────────────────────────────────────────────── */
+  const importDialog = $('importDialog');
+  $('exportBtn').onclick = () => toast('已导出 shannian-capsules.json');
+  $('importBtn').onclick = () => { importDialog.classList.add('show'); scrim.classList.add('show'); };
+  $('fileBtn').onclick = () => { importDialog.classList.remove('show'); scrim.classList.remove('show'); toast('已导入 0 条'); };
+  $('demoWrong').onclick = () => {
+    importDialog.classList.remove('show'); scrim.classList.remove('show');
+    toast('文件格式不匹配，请导入 .json 文件');
+  };
+
+  /* ─── 标注开关 ─────────────────────────────────────────────────── */
+  const annotToggle = $('annotToggle');
+  annotToggle.onclick = () => {
+    const on = annotToggle.classList.toggle('on');
+    screen.classList.toggle('annot-on', on);
+    annotToggle.textContent = on ? '标注 ✓' : '标注';
+  };
+
+  /* ─── 初始化 ───────────────────────────────────────────────────── */
+  $('totalCount').textContent = '共 ' + capsules.length + ' 条';
+  render();
+})();
+</script>
+</body>
+</html>

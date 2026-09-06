@@ -52,8 +52,9 @@ private const val ACTION_DP = 96f
 
 /**
  * 可滑动胶囊卡片：白色圆角卡片 + 左侧分类色条 + 两行正文 + 换行标签 + 相对时间。
+ * 已完成(done) 卡片整条置灰：左条与正文用浅灰，标签/时间仍为常规灰。
  * 手势：只支持左滑——手指左滑使卡片向左移，露出右侧两格动作面板
- * （primary=主动作「归档/恢复」，secondary=次动作「删除/彻底删除」，由调用场景传参）。
+ * （primary=主动作「完成/未完成」或「恢复」等，secondary=次动作「删除」，由调用场景传参）。
  * 拖过一半自动吸附全展开，点露出的动作区执行；卡片点一下回弹；右滑不展开动作。
  * 展开互斥：同一时刻只允许一条处于左滑展开态（见 UiState.swipeOpenId），再滑别条会自动收起上一条。
  */
@@ -70,6 +71,9 @@ fun CapsuleCard(
     onOpen: () -> Unit,
 ) {
     val catColor = Palette.catColor(capsule.cat)
+    val done = capsule.done
+    val barColor = if (done) Palette.border else catColor
+    val bodyColor = if (done) Palette.muted else Palette.fg
     val shape = RoundedCornerShape(Radius.card)
 
     // 动作格按 dp 布局，而手势/偏移记录的是物理像素：用当前密度把每格换算成像素宽，
@@ -174,12 +178,12 @@ fun CapsuleCard(
                     .fillMaxHeight()
                     .width(3.dp)
                     .padding(vertical = 12.dp)
-                    .background(catColor, RoundedCornerShape(2.dp))
+                    .background(barColor, RoundedCornerShape(2.dp))
             )
             Column(Modifier.weight(1f).padding(end = 16.dp, top = 13.dp, bottom = 12.dp)) {
                 Text(
                     text = capsule.text,
-                    color = Palette.fg,
+                    color = bodyColor,
                     fontSize = 15.sp,
                     lineHeight = 21.sp,
                     maxLines = 2,

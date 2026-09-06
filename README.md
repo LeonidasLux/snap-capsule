@@ -3,7 +3,7 @@
 一套 Kotlin Multiplatform 代码实现的「闪念胶囊」笔记 App，基于腾讯 TDS 的 **Kuikly** 跨端 UI 框架，
 目标平台 Android / iOS / 鸿蒙(HarmonyOS) / H5，数据为本地单 JSON 文件（导入导出同构）。
 
-> 原型：`shannian-capsule-prototype.html`（高保真 HTML MVP，交互与视觉的唯一权威来源）。
+> 原型：`shannian-capsule-prototype-v2.html`（高保真 HTML MVP，交互与视觉的唯一权威来源；v1 的时间筛选/归档已被 v2 的「未完成/已完成」语义取代）。
 
 ## 架构
 
@@ -17,15 +17,15 @@ docs/PLATFORMS.md   iOS / 鸿蒙接入指南
 
 - UI：Kuikly **Compose DSL**（`@Page + ComposeContainer + setContent`）；import 规则
   `androidx.compose.runtime.*` + `com.tencent.kuikly.compose.*`。
-- 数据：`model/Capsule`（kotlinx.serialization，schema v1）→ `data/CapsuleStore`（snapshot 状态）
+- 数据：`model/Capsule`（kotlinx.serialization，schema v2：`done`/`trashed` 双布尔，兼容读取 v1）→ `data/CapsuleStore`（snapshot 状态）
   → `CapsuleFileStorage`（expect/actual：Android=filesDir 文件、H5=localStorage）。
 - 导入导出：设置页触发；H5=浏览器下载/文件选择，Android=系统分享/文件选择（由壳注入 `CapBridge`）。
-- 交互：卡片单击/长按→详情；左滑→删除（确认）；右滑→归档（归档 Tab 可查看/恢复）。
+- 交互：卡片点按→直接进编辑抽屉；左滑→「完成/未完成（绿）＋删除（红）」，已完成卡片置灰；顶栏 🗑 直达回收站；回收站条目按钮式恢复/彻底删除。
 
 ## 功能
 
-主页胶囊列表（今天/近一周/全部/归档 筛选）· 空态 · 新建/编辑半屏弹窗（分类+标签）· 详情面板 ·
-移动分类 · 归档箱(恢复/删除) · 删除确认 · 导出/导入 JSON · 数据总量 · 示例数据/清空 · Toast。
+主页胶囊列表（未完成/已完成 筛选）· 空态 · 新建/编辑半屏弹窗（分类+标签，编辑态可删除此条）·
+完成/移回未完成 · 回收站(恢复/彻底删除，彻底删除有确认) · 导出/导入 JSON · 数据总量 · 示例数据/清空 · Toast。
 
 ## 运行
 

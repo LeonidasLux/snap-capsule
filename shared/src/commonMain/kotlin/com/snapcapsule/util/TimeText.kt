@@ -8,7 +8,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 
-/** 相对时间文案与「今天/近一周」的本地日界计算。 */
+/** 相对时间文案（卡片脚注）。 */
 object TimeText {
 
     private val zone: TimeZone = TimeZone.currentSystemDefault()
@@ -35,14 +35,6 @@ object TimeText {
             }
         }
     }
-
-    /** 该时刻是否落在“今天”（本地自然日）。 */
-    fun isToday(epochMs: Long, now: Long): Boolean =
-        epochMs >= startOfDay(now)
-
-    /** 该时刻是否在“近一周”内（今天起的 7 个自然日，即过去 6 天 + 今天）。 */
-    fun isThisWeek(epochMs: Long, now: Long): Boolean =
-        epochMs >= startOfDay(now - 6L * 86_400_000L) // 6 天，勿写成 6L（毫秒）
 
     private fun startOfDay(epochMs: Long): Long {
         val dt = Instant.fromEpochMilliseconds(epochMs).toLocalDateTime(zone)

@@ -20,8 +20,8 @@ fun AppShell() {
     }
 
     // 打开任一覆盖层/弹层时，先收起可能处于左滑展开的卡片（点别处应收起展开）
-    LaunchedEffect(UiState.showSettings, UiState.showTrash, UiState.detailId, UiState.editorVisible) {
-        if (UiState.showSettings || UiState.showTrash || UiState.detailId != null || UiState.editorVisible) {
+    LaunchedEffect(UiState.showSettings, UiState.showTrash, UiState.editorVisible) {
+        if (UiState.showSettings || UiState.showTrash || UiState.editorVisible) {
             UiState.swipeOpenId = null
         }
     }
@@ -41,7 +41,6 @@ fun AppShell() {
         if (UiState.showSettings) SettingsScreen()
         if (UiState.showTrash) TrashScreen()
         EditorSheet()
-        DetailSheet()
         DeleteConfirmDialog()
         EmptyTrashConfirmDialog()
         ClearAllConfirmDialog()

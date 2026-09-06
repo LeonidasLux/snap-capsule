@@ -111,17 +111,6 @@ fun FilterTabBar(
     }
 }
 
-/** 小分类 pill（详情 / 列表 meta 中）。 */
-@Composable
-fun CatPill(cat: Cat) {
-    val bg = Palette.catSoft(cat)
-    val fg = Palette.catColor(cat)
-    Box(Modifier.clip(RoundedCornerShape(Radius.chip)).background(bg).padding(horizontal = 10.dp).height(24.dp),
-        contentAlignment = Alignment.Center) {
-        Text(text = if (cat == Cat.WORK) "💼 工作" else "☕ 生活", color = fg, fontSize = 12.sp, fontWeight = FontWeight.Medium)
-    }
-}
-
 /** 标签 chip（#开头小字）。 */
 @Composable
 fun TagChip(tag: String, onRemove: (() -> Unit)? = null, accent: Color = Palette.accent) {

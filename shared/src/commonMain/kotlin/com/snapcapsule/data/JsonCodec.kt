@@ -2,16 +2,37 @@ package com.snapcapsule.data
 
 import com.snapcapsule.model.Capsule
 import com.snapcapsule.model.Cat
-import com.snapcapsule.model.Status
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
-/** 磁盘/导出统一 JSON schema v1。 */
+/**
+ * 磁盘 / 导出统一 JSON schema（当前 v2）。
+ *
+ * schema v2（与 v2 原型语义一致）：胶囊用 [Capsule.done] + [Capsule.trashed] 两个布尔维度，
+ * 不再有 v1 的 status(active/archived/trashed) 三态。
+ */
 @Serializable
 data class CapsuleFile(
-    val version: Int = 1,
+    val version: Int = 2,
     val capsules: List<Capsule> = emptyList(),
+)
+
+/** v1 旧文件结构，仅供迁移读取（status → done/trashed）。 */
+@Serializable
+private data class CapsuleV1File(
+    val version: Int = 1,
+    val capsules: List<CapsuleV1> = emptyList(),
+)
+
+@Serializable
+private data class CapsuleV1(
+    val id: Long,
+    val text: String,
+    val cat: Cat,
+    val tags: List<String> = emptyList(),
+    val createdAt: Long,
+    val status: String = "active",
 )
 
 /** 导入解析结果。 */
@@ -19,6 +40,10 @@ sealed interface DecodeResult {
     data class Ok(val capsules: List<Capsule>) : DecodeResult
     data class Err(val reason: String) : DecodeResult
 }
+
+/** 兜底读取顶层 version 字段（用于区分 v1/v2，再走各自的解码器）。 */
+@Serializable
+private data class VersionFile(val version: Int = 0)
 
 object JsonCodec {
 
@@ -33,25 +58,41 @@ object JsonCodec {
 
     /**
      * 全量校验：版本 / 必填字段 / 值域均合法才返回 Ok，否则 Err。
+     * 兼容读取 v1：旧 archived → 已完成(done)、旧 trashed → 回收站(trashed)；
+     * 其余(active) 默认未完成。
      * 调用方保证「全量合法才落盘」，绝不半写坏数据。
      */
     fun decode(text: String): DecodeResult {
         val trimmed = text.trim()
         if (trimmed.isEmpty()) return DecodeResult.Err("文件为空")
 
-        val file = try {
-            json.decodeFromString<CapsuleFile>(trimmed)
+        val version = try {
+            json.decodeFromString<VersionFile>(trimmed).version
         } catch (t: Throwable) {
             return DecodeResult.Err("不是有效的 JSON 文件（${t.message?.take(60) ?: "解析失败"}）")
         }
 
-        if (file.version != 1) {
-            return DecodeResult.Err("不支持的数据版本 ${file.version}，仅支持 v1")
+        val capsules: List<Capsule> = when (version) {
+            1 -> try {
+                json.decodeFromString<CapsuleV1File>(trimmed).capsules.map { it.toV2() }
+            } catch (t: Throwable) {
+                return DecodeResult.Err("不是有效的 v1 JSON 文件（${t.message?.take(60) ?: "解析失败"}）")
+            }
+
+            2 -> try {
+                json.decodeFromString<CapsuleFile>(trimmed).capsules
+            } catch (t: Throwable) {
+                return DecodeResult.Err("不是有效的 JSON 文件（${t.message?.take(60) ?: "解析失败"}）")
+            }
+
+            0 -> return DecodeResult.Err("缺少数据版本字段")
+            else -> return DecodeResult.Err("不支持的数据版本 $version，仅支持 v1/v2")
         }
-        if (file.capsules.isEmpty()) return DecodeResult.Ok(emptyList())
+
+        if (capsules.isEmpty()) return DecodeResult.Ok(emptyList())
 
         // 校验每条记录；任何一条非法即整体拒绝（回滚语义）
-        file.capsules.forEachIndexed { i, c ->
+        capsules.forEachIndexed { i, c ->
             val reason = when {
                 c.id <= 0L -> "第 ${i + 1} 条 id 非法"
                 c.text.isBlank() -> "第 ${i + 1} 条内容为空"
@@ -62,13 +103,25 @@ object JsonCodec {
             if (reason != null) return DecodeResult.Err(reason)
         }
         // 合并重复 id（保留靠后者，避免导入后键冲突）
-        val merged = file.capsules.associateBy { it.id }.values.toList()
+        val merged = capsules.associateBy { it.id }.values.toList()
         return DecodeResult.Ok(merged)
     }
 
+    /** v1 三态 → v2 双布尔迁移。 */
+    private fun CapsuleV1.toV2(): Capsule = Capsule(
+        id = id,
+        text = text,
+        cat = cat,
+        tags = tags,
+        createdAt = createdAt,
+        done = status == "archived",
+        trashed = status == "trashed",
+    )
+
     /**
-     * 示例数据：50 条，时间从几分钟前到约 3 年前（横跨三年），
-     * 其中 5 条已归档便于演示归档箱。now = 当前 epochMs，用于生成相对时间一致的 createdAt。
+     * 示例数据：50 条，时间从几分钟前到约 3 年前（横跨三年）。
+     * 未完成约 39 条、已完成 8 条（含 1 分钟前新完成，便于演示「已完成」Tab）、回收站 3 条。
+     * now = 当前 epochMs，用于生成相对时间一致的 createdAt。
      */
     fun loadSample(now: Long): List<Capsule> {
         val hour = 3600_000L
@@ -80,12 +133,13 @@ object JsonCodec {
             cat: Cat,
             tags: List<String>,
             ago: Long,
-            status: Status = Status.ACTIVE,
-        ) = Capsule(id = id, text = text, cat = cat, tags = tags, createdAt = now - ago, status = status)
+            done: Boolean = false,
+            trashed: Boolean = false,
+        ) = Capsule(id = id, text = text, cat = cat, tags = tags, createdAt = now - ago, done = done, trashed = trashed)
 
         return listOf(
             // —— 今天 · 近一周（新 → 旧） ——
-            mk(201, "把测试反馈的首页空态文案对比度问题转给前端，附上复现路径和录屏链接", Cat.WORK, listOf("工作", "沟通"), 1 * minute),
+            mk(201, "把测试反馈的首页空态文案对比度问题转给前端，附上复现路径和录屏链接", Cat.WORK, listOf("工作", "沟通"), 1 * minute, done = true),
             mk(202, "记得取今晚话剧的票，19:30 前到剧场，地铁 E 口出", Cat.LIFE, listOf("生活"), 8 * minute),
             mk(203, "灰度方案补充一个回归对照组，避免把大盘波动误判成实验收益", Cat.WORK, listOf("工作", "数据分析"), 2 * hour),
             mk(204, "给阳台的多肉换盆，顺便补一次缓释肥", Cat.LIFE, listOf("生活", "家居"), 5 * hour + 30 * minute),
@@ -99,15 +153,15 @@ object JsonCodec {
             mk(211, "面试题库补一道系统设计：如何支撑十万人同时抢课", Cat.WORK, listOf("面试"), 8 * day),
             mk(212, "体检报告取回来，重点看甲状腺和血脂两项，找医生复核", Cat.LIFE, listOf("健康"), 12 * day),
             mk(213, "给 API 加上请求日志采样，定位慢接口先看 p99 分布", Cat.WORK, listOf("代码"), 16 * day),
-            mk(214, "家里路由器重启后仍掉线，联系运营商上门检测光猫", Cat.LIFE, listOf("家居"), 21 * day),
+            mk(214, "家里路由器重启后仍掉线，联系运营商上门检测光猫", Cat.LIFE, listOf("家居"), 21 * day, trashed = true),
             mk(215, "版本发布前把数据库备份脚本在预发环境完整跑通一次", Cat.WORK, listOf("运维"), 26 * day),
             mk(216, "灵感：把相机改成「先按快门再构图」的模式，拍街景更随性", Cat.LIFE, listOf("灵感"), 33 * day),
             // —— 近一个季度 ——
-            mk(217, "把用户访谈里「导出后找不到文件」的反馈整理成独立工单", Cat.WORK, listOf("产品"), 41 * day),
+            mk(217, "把用户访谈里「导出后找不到文件」的反馈整理成独立工单", Cat.WORK, listOf("产品"), 41 * day, done = true),
             mk(218, "给爸妈写一页图文，教他们识别 AI 换脸诈骗电话", Cat.LIFE, listOf("家庭"), 50 * day),
             mk(219, "把设计稿的间距统一收敛到 4/8/12 的栅格体系", Cat.WORK, listOf("设计"), 61 * day),
-            mk(220, "附近新开的川菜馆约同事去试，先记着人均和营业时间", Cat.LIFE, listOf("生活"), 74 * day),
-            mk(221, "优化冷启动：把首屏用不到的图表库拆成按需加载", Cat.WORK, listOf("代码", "性能"), 88 * day),
+            mk(220, "附近新开的川菜馆约同事去试，先记着人均和营业时间", Cat.LIFE, listOf("生活"), 74 * day, trashed = true),
+            mk(221, "优化冷启动：把首屏用不到的图表库拆成按需加载", Cat.WORK, listOf("代码", "性能"), 88 * day, done = true),
             mk(222, "基金定投继续，调低消费板块仓位到三成", Cat.LIFE, listOf("理财"), 104 * day),
             // —— 近半年 ——
             mk(223, "周报模板加一栏「本周阻塞」，让风险更早浮出水面", Cat.WORK, listOf("复盘"), 122 * day),
@@ -117,31 +171,31 @@ object JsonCodec {
             mk(227, "重构权限模块前先补一轮用例，避免回归把老逻辑打坏", Cat.WORK, listOf("代码"), 214 * day),
             mk(228, "报了个周末陶艺课，把一直想做的杯子做出来", Cat.LIFE, listOf("学习"), 242 * day),
             // —— 近一年 ——
-            mk(229, "把客服高频问题沉淀成帮助中心文章，减少重复咨询", Cat.WORK, listOf("文档"), 272 * day),
+            mk(229, "把客服高频问题沉淀成帮助中心文章，减少重复咨询", Cat.WORK, listOf("文档"), 272 * day, done = true),
             mk(230, "寒假带爸妈去南方海边，避开春节人潮", Cat.LIFE, listOf("家庭", "旅行"), 304 * day),
             mk(231, "手势冲突评审：确认长按与左滑在不同场景的边界", Cat.WORK, listOf("会议"), 338 * day),
             mk(232, "把闲置的 Kindle 挂出去，换成能看批注的墨水屏", Cat.LIFE, listOf("数码"), 374 * day),
             mk(233, "研究信息流对长内容的适配，输出一页结论", Cat.WORK, listOf("调研"), 412 * day),
             mk(234, "戒了睡前刷短视频两周，睡眠明显变好，继续坚持", Cat.LIFE, listOf("健康"), 452 * day),
             // —— 一年以上 ——
-            mk(235, "给新人梳理一份 onboarding 清单，覆盖从账号到发布", Cat.WORK, listOf("文档"), 494 * day),
+            mk(235, "给新人梳理一份 onboarding 清单，覆盖从账号到发布", Cat.WORK, listOf("文档"), 494 * day, done = true),
             mk(236, "秋游那个水库边可以钓鱼，下次带上装备", Cat.LIFE, listOf("旅行"), 538 * day),
             mk(237, "把埋点规范补充到 wiki，事件命名统一「模块.动作」", Cat.WORK, listOf("文档"), 584 * day),
-            mk(238, "记下那本讲慢决策的书里的两个反例", Cat.LIFE, listOf("阅读"), 632 * day, Status.ARCHIVED),
+            mk(238, "记下那本讲慢决策的书里的两个反例", Cat.LIFE, listOf("阅读"), 632 * day, done = true),
             mk(239, "旧版小程序兼容：给即将废弃的接口加灰度提醒", Cat.WORK, listOf("运维"), 682 * day),
             mk(240, "办健身卡前先蹭两周体验课，确认能坚持再决定", Cat.LIFE, listOf("健康"), 734 * day),
             // —— 两年前 ——
             mk(241, "把测试环境造数脚本参数化，减少手工拼 JSON", Cat.WORK, listOf("代码"), 788 * day),
             mk(242, "给车窗换膜，比价三家再定，问清质保年限", Cat.LIFE, listOf("数码"), 844 * day),
             mk(243, "把去年的 OKR 复盘结论整理成一页纸，给今年定目标做参照", Cat.WORK, listOf("复盘"), 902 * day),
-            mk(244, "第一次跑半马完赛，记下后半程补给的节奏心得", Cat.LIFE, listOf("健康"), 962 * day, Status.ARCHIVED),
+            mk(244, "第一次跑半马完赛，记下后半程补给的节奏心得", Cat.LIFE, listOf("健康"), 962 * day, done = true),
             mk(245, "图片 CDN 切到新服务商前，先跑一周双写比对", Cat.WORK, listOf("运维"), 1024 * day),
             // —— 三年前（最早的一批） ——
             mk(246, "把旅行照片按城市归档，每城挑十张做成相册", Cat.LIFE, listOf("旅行"), 1088 * day),
-            mk(247, "整理技术分享初稿，补充图表后投公司内刊", Cat.WORK, listOf("文档"), 1102 * day),
-            mk(248, "搬进新家第一周：记下厨房下水慢，要请师傅通一次", Cat.LIFE, listOf("家居"), 1110 * day, Status.ARCHIVED),
-            mk(249, "重构支付回调的幂等逻辑，先写清边界再动代码", Cat.WORK, listOf("代码"), 1118 * day, Status.ARCHIVED),
-            mk(250, "第一次露营：帐篷别搭在风口，防潮垫要带够", Cat.LIFE, listOf("旅行"), 1130 * day, Status.ARCHIVED),
+            mk(247, "整理技术分享初稿，补充图表后投公司内刊", Cat.WORK, listOf("文档"), 1102 * day, trashed = true),
+            mk(248, "搬进新家第一周：记下厨房下水慢，要请师傅通一次", Cat.LIFE, listOf("家居"), 1110 * day),
+            mk(249, "重构支付回调的幂等逻辑，先写清边界再动代码", Cat.WORK, listOf("代码"), 1118 * day),
+            mk(250, "第一次露营：帐篷别搭在风口，防潮垫要带够", Cat.LIFE, listOf("旅行"), 1130 * day),
         )
     }
 }

@@ -83,6 +83,6 @@ node scripts\static-server.mjs 8080
 
 ## 数据文件
 
-- JSON schema v1：`{ "version": 1, "capsules": [ { id, text, cat: "work"|"life", tags[], createdAt, status: "active"|"archived" } ] }`
+- JSON schema v2：`{ "version": 2, "capsules": [ { id, text, cat: "work"|"life", tags[], createdAt, done: true|false, trashed: true|false } ] }`（兼容读取 v1：旧 `status` 的 `archived → done=true`、`trashed → trashed=true`）
 - Android 落点 `filesDir/capsules.json`；H5 落点 `localStorage["snap_capsules"]`。
 - 导入为「全量校验，合法才落盘」；非法文件会拒绝并保留原数据。

@@ -11,9 +11,9 @@
 | dev server | `http://localhost:8080/`（`jsBrowserDevelopmentRun` 起的 dev server） |
 | 页面入口 | `http://localhost:8080/?page_name=home` |
 | 业务包 | `shared` 被 Kuikly 插件打成 `nativevue2.zip`，再解压进 h5App 的 `processedResources/js/main/page/` |
-| 持久化 | `window.localStorage["snap_capsules"]`（JSON schema v1，与 Android 的 `files/capsules.json` 彼此独立） |
+| 持久化 | `window.localStorage["snap_capsules"]`（JSON schema v2，与 Android 的 `files/capsules.json` 彼此独立） |
 | 导出 / 导入 | 导出=浏览器下载；导入=文件选择（经 `CapBridge` 注入） |
-| 演示数据 | 列表为空时 → 主页右上 ⚙️ 设置 →「🧹 载入示例数据」（一次 50 条、跨三年、含归档） |
+| 演示数据 | 列表为空时 → 主页右上 ⚙️ 设置 →「🧹 载入示例数据」（一次 50 条、跨三年：未完成/已完成/回收站 三态都有内容） |
 
 ## 一、开发预览（推荐）
 

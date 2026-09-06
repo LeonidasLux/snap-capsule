@@ -85,6 +85,14 @@ fun EditorSheet() {
         UiState.editingId = null
     }
 
+    /** 编辑态底部「删除此条」：移入回收站（可恢复），不弹确认（对齐 v2）。 */
+    fun delete() {
+        val id = editing?.id ?: return
+        CapsuleStore.trash(id)
+        UiState.toast("已移入回收站")
+        close()
+    }
+
     val wellShape = RoundedCornerShape(Radius.btn)
 
     ModalBottomSheet(
@@ -195,9 +203,19 @@ fun EditorSheet() {
                 }
             }
 
-            // 底部取消（左对齐，原型 cancel-link）—— 上方留白拉大、自身贴近 sheet 底部，平衡上下留白
+            // 底部操作行：左侧「删除此条」（仅编辑态，danger 链接），右侧「取消」（对齐 v2 sheet-foot）
             Spacer(Modifier.height(22.dp))
             Row(Modifier.fillMaxWidth()) {
+                if (isEdit) {
+                    Box(
+                        Modifier
+                            .clickable { delete() }
+                            .padding(top = 6.dp, bottom = 2.dp, start = 2.dp, end = 12.dp)
+                    ) {
+                        Text("删除此条", color = Palette.danger, fontSize = 14.sp)
+                    }
+                    Spacer(Modifier.weight(1f))
+                }
                 Box(
                     Modifier
                         .clickable { close() }

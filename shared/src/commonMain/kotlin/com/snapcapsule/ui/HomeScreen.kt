@@ -1,7 +1,10 @@
 package com.snapcapsule.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import com.tencent.kuikly.compose.foundation.background
 import com.tencent.kuikly.compose.foundation.clickable
 import com.tencent.kuikly.compose.foundation.gestures.detectTapGestures
@@ -24,24 +27,21 @@ import com.tencent.kuikly.compose.material3.Text
 import com.tencent.kuikly.compose.ui.Alignment
 import com.tencent.kuikly.compose.ui.Modifier
 import com.tencent.kuikly.compose.ui.draw.clip
-import com.tencent.kuikly.compose.ui.graphics.Color
 import com.tencent.kuikly.compose.ui.input.pointer.pointerInput
-import com.tencent.kuikly.compose.ui.zIndex
 import com.tencent.kuikly.compose.ui.text.font.FontFamily
 import com.tencent.kuikly.compose.ui.text.font.FontWeight
 import com.tencent.kuikly.compose.ui.unit.dp
 import com.tencent.kuikly.compose.ui.unit.sp
+import com.tencent.kuikly.compose.ui.zIndex
 import com.snapcapsule.data.CapsuleStore
-import com.snapcapsule.model.Capsule
 import com.snapcapsule.model.Filter
 import com.snapcapsule.platform.BuildInfo
 import com.snapcapsule.theme.Palette
-import com.snapcapsule.theme.Radius
 import com.snapcapsule.util.TimeText
 
 private val ALL_FILTERS = Filter.entries.toList()
 
-/** 主页：标题栏 + 筛选 + 胶囊列表/空态 + 新建 FAB。 */
+/** 主页：标题栏（回收站 + 设置）+ 未完成/已完成筛选 + 胶囊列表/空态 + 新建 FAB。 */
 @Composable
 fun HomeScreen() {
     val now = remember { CapsuleStore.now() }
@@ -54,7 +54,7 @@ fun HomeScreen() {
                 detectTapGestures { UiState.swipeOpenId = null }
             }
     ) {
-        // 标题栏
+        // 标题栏：左标题 + 右「回收站 / 设置」（对齐 v2 顶栏）
         Row(
             Modifier
                 .fillMaxWidth()
@@ -69,6 +69,20 @@ fun HomeScreen() {
                 fontFamily = FontFamily.Serif,
                 modifier = Modifier.weight(1f),
             )
+            // 回收站直达（v2：独立于设置的顶栏入口）
+            Box(
+                Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable {
+                        UiState.swipeOpenId = null
+                        UiState.showTrash = true
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("🗑", fontSize = 19.sp)
+            }
+            // 设置
             Box(
                 Modifier
                     .size(40.dp)
@@ -79,7 +93,7 @@ fun HomeScreen() {
                     },
                 contentAlignment = Alignment.Center,
             ) {
-                Text("⚙️", fontSize = 20.sp)
+                Text("⚙️", fontSize = 19.sp)
             }
         }
 
@@ -93,7 +107,7 @@ fun HomeScreen() {
             )
         }
 
-        // 筛选
+        // 筛选：未完成 / 已完成
         val currentIndex = remember(CapsuleStore.filter) { ALL_FILTERS.indexOf(CapsuleStore.filter).coerceAtLeast(0) }
         FilterTabBar(
             tabs = ALL_FILTERS,
@@ -107,33 +121,40 @@ fun HomeScreen() {
         // 列表区
         Box(Modifier.weight(1f)) {
             val items = CapsuleStore.visible()
-            if (items.isEmpty()) {
-                EmptyState(filter = CapsuleStore.filter)
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 132.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    items(items = items, key = { it.id }) { c ->
-                        val archived = c.status == com.snapcapsule.model.Status.ARCHIVED
-                        CapsuleCard(
-                            capsule = c,
-                            now = now,
-                            primaryLabel = if (archived) "恢复" else "归档",
-                            primaryColor = Palette.life,
-                            onPrimary = {
-                                if (archived) {
-                                    CapsuleStore.restore(c.id)
-                                    UiState.toast("已恢复到当前列表")
-                                } else {
-                                    CapsuleStore.archive(c.id)
-                                    UiState.toast("已归档")
-                                }
-                            },
-                            onSecondary = { CapsuleStore.trash(c.id); UiState.toast("已移入回收站") },
-                            onOpen = { UiState.detailId = c.id },
-                        )
+            Column(Modifier.fillMaxSize()) {
+                if (items.isNotEmpty()) {
+                    ListHintRow()
+                }
+                if (items.isEmpty()) {
+                    EmptyState(filter = CapsuleStore.filter)
+                } else {
+                    val filterNow = CapsuleStore.filter
+                    LazyColumn(
+                        modifier = Modifier.weight(1f).fillMaxWidth(),
+                        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 2.dp, bottom = 132.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        items(items = items, key = { it.id }) { c ->
+                            CapsuleCard(
+                                capsule = c,
+                                now = now,
+                                // 当前 Tab 内 done 状态一致：未完成 Tab → 主操作“完成”，已完成 Tab → “移回未完成”
+                                primaryLabel = if (filterNow == Filter.OPEN) "完成" else "未完成",
+                                primaryColor = Palette.life,
+                                onPrimary = {
+                                    val toDone = filterNow == Filter.OPEN
+                                    CapsuleStore.setDone(c.id, toDone)
+                                    UiState.toast(if (toDone) "已标记完成" else "已移回未完成")
+                                },
+                                onSecondary = { CapsuleStore.trash(c.id); UiState.toast("已移入回收站") },
+                                // 对齐 v2：点卡片直接进可编辑抽屉（查看 + 编辑一体）
+                                onOpen = {
+                                    UiState.swipeOpenId = null
+                                    UiState.editingId = c.id
+                                    UiState.editorVisible = true
+                                },
+                            )
+                        }
                     }
                 }
             }
@@ -159,14 +180,41 @@ fun HomeScreen() {
     }
 }
 
+/** 列表顶部的一次性提示（可关闭，会话内记住）。 */
+@Composable
+private fun ListHintRow() {
+    var show by remember { mutableStateOf(true) }
+    if (!show) return
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(start = 20.dp, end = 20.dp, bottom = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = "点卡片查看/编辑 · 左滑完成/删除",
+            color = Palette.muted,
+            fontSize = 12.sp,
+            modifier = Modifier.weight(1f),
+        )
+        Box(
+            Modifier
+                .size(26.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .clickable { show = false },
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("✕", color = Palette.muted, fontSize = 12.sp)
+        }
+    }
+}
+
 /** 空状态。 */
 @Composable
 private fun EmptyState(filter: Filter) {
     val title = when (filter) {
-        Filter.ARCHIVED -> "归档箱是空的"
-        Filter.TODAY -> "今天还没有闪念"
-        Filter.WEEK -> "近一周没有闪念"
-        Filter.ALL -> "此刻大脑很干净"
+        Filter.OPEN -> "此刻大脑很干净"
+        Filter.DONE -> "已完成里空空的"
     }
     Column(
         Modifier.fillMaxSize().padding(bottom = 60.dp),
